@@ -920,6 +920,7 @@
 		<item>@string/mainmenu_all</item>
 		<item>@string/find_location</item>
 		<item>@string/mainmenu_custom_destination</item>
+		<item>@string/mainmenu_pinned</item>
 	</string-array>
 
 	<!-- Constants. Do not change. -->
@@ -929,6 +930,7 @@
 		<item>all</item>
 		<item>subreddit_search</item>
 		<item>custom</item>
+		<item>pinned</item>
 	</string-array>
 
 	<!-- Constants. Do not change. -->
@@ -937,6 +939,7 @@
 		<item>all</item>
 		<item>subreddit_search</item>
 		<item>custom</item>
+		<item>pinned</item>
 	</string-array>
 
 	<!-- 2020-02-04 -->

@@ -157,6 +157,7 @@
     <string name="mainmenu_inbox">Inbox</string>
     <string name="mainmenu_profile">My Profile</string>
     <string name="mainmenu_header_subreddits">Subreddits</string>
+	<string name="mainmenu_pinned">Pinned Subreddits</string>
 
     <!-- General Listing -->
 
@@ -2014,4 +2015,7 @@
 	<string name="pref_appearance_navbar_opacity_option_auto">Automatic</string>
 	<string name="pref_appearance_colorful_indentlines_key" translatable="false">pref_appearance_colorful_indentlines</string>
 	<string name="pref_appearance_colorful_indentlines_title">Colorful comment indent bars</string>
+
+  <string name="pref_behaviour_skiptopinned_title">Skip to pinned subreddits</string>
+  <string name="pref_behaviour_skiptopinned_key" translatable="false">pref_behaviour_skiptopinned</string>
 </resources>
