@@ -1282,8 +1282,8 @@ public final class SettingsFragment extends PreferenceFragmentCompat {
 
 	private void showMinCommentsDialog(final CheckBoxPreference preference) {
 		final Context context = getActivity();
-		final android.widget.EditText editText = new android.widget.EditText(context);
-		editText.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+		final EditText editText = new EditText(context);
+		editText.setInputType(InputType.TYPE_CLASS_NUMBER);
 		editText.setText(String.valueOf(PrefsUtility.pref_behaviour_min_comments()));
 		editText.setSelection(editText.getText().length());
 
