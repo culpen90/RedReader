@@ -903,7 +903,8 @@ public final class SettingsFragment extends PreferenceFragmentCompat {
 									R.string.hidden_post_titles_remove_message,
 								rule))
 							.setNegativeButton(android.R.string.cancel, null)
-							.setPositiveButton(R.string.hidden_post_titles_remove, (confirm, button) -> {
+							.setPositiveButton(R.string.hidden_post_titles_remove,
+									(confirm, button) -> {
 								if(isRegex.get(which)) {
 									PrefsUtility.pref_hidden_post_title_regex_remove(
 											rawRegex(regexes, which, terms.size()));
