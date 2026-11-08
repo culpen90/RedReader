@@ -2108,7 +2108,10 @@
 	<string name="api_action_invalid_response">Reddit returned an invalid response. Try again.</string>
 	<string name="create_multireddit">Create multireddit</string>
 	<string name="multireddit_name_hint">Name (letters, numbers and underscores)</string>
-	<string name="multireddit_create_description">Create a private multireddit for %1$s with these %2$d subreddits.</string>
+	<plurals name="multireddit_create_description">
+		<item quantity="one">Create a private multireddit for %1$s with %2$d subreddit.</item>
+		<item quantity="other">Create a private multireddit for %1$s with %2$d subreddits.</item>
+	</plurals>
 	<string name="multireddit_sign_in_required">Sign in to create or edit a multireddit.</string>
 	<string name="multireddit_invalid_name">Use 1–50 letters, numbers or underscores.</string>
 	<string name="multireddit_invalid_members">Choose between 1 and 100 ordinary subreddits.</string>
