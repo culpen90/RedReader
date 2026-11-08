@@ -812,8 +812,12 @@ public final class SettingsFragment extends PreferenceFragmentCompat {
 		for(final String regex : regexes) {
 			final boolean caseInsensitive = regex.startsWith("(?i)");
 			final String expression = caseInsensitive ? regex.substring(4) : regex;
-			displayedRules.add("/" + expression + "/ ("
-					+ (caseInsensitive ? "case-insensitive" : "case-sensitive") + ")");
+			displayedRules.add(getString(
+					R.string.post_filter_regex_label,
+					expression,
+					getString(caseInsensitive
+							? R.string.post_filter_case_insensitive
+							: R.string.post_filter_case_sensitive)));
 			isRegex.add(true);
 		}
 
@@ -867,14 +871,18 @@ public final class SettingsFragment extends PreferenceFragmentCompat {
 		final ArrayList<Boolean> isRegex = new ArrayList<>();
 
 		for(final String term : terms) {
-			displayedRules.add(term + " (title contains)");
+			displayedRules.add(getString(R.string.hidden_post_titles_term_label, term));
 			isRegex.add(false);
 		}
 		for(final String regex : regexes) {
 			final boolean caseInsensitive = regex.startsWith("(?i)");
 			final String expression = caseInsensitive ? regex.substring(4) : regex;
-			displayedRules.add("/" + expression + "/ ("
-					+ (caseInsensitive ? "case-insensitive" : "case-sensitive") + ")");
+			displayedRules.add(getString(
+					R.string.post_filter_regex_label,
+					expression,
+					getString(caseInsensitive
+							? R.string.post_filter_case_insensitive
+							: R.string.post_filter_case_sensitive)));
 			isRegex.add(true);
 		}
 
@@ -929,37 +937,38 @@ public final class SettingsFragment extends PreferenceFragmentCompat {
 		dialogContents.addView(input);
 		dialogContents.addView(caseInsensitive);
 
-		new MaterialAlertDialogBuilder(context)
+		final AlertDialog addDialog = new MaterialAlertDialogBuilder(context)
 				.setTitle(R.string.pref_behaviour_hidden_post_titles_title)
 				.setView(dialogContents)
 				.setNegativeButton(android.R.string.cancel, null)
-				.setPositiveButton(R.string.blocked_subreddits_add, (dialog, which) -> {
+				.setPositiveButton(R.string.blocked_subreddits_add, null)
+				.create();
+		addDialog.setOnShowListener(shown -> addDialog.getButton(
+				AlertDialog.BUTTON_POSITIVE).setOnClickListener(button -> {
 					final String value = input.getText().toString().trim();
 					if(value.length() >= 2 && value.startsWith("/") && value.endsWith("/")) {
 						final String expression = value.substring(1, value.length() - 1);
 						if(expression.isEmpty()) {
-							General.quickToast(context, R.string.hidden_post_titles_invalid_rule);
-							showAddHiddenPostTitleDialog(context);
+							input.setError(getString(R.string.hidden_post_titles_invalid_rule));
 							return;
 						}
 						try {
 							PrefsUtility.pref_hidden_post_title_regex_add(
 									caseInsensitive.isChecked() ? "(?i)" + expression : expression);
 						} catch(final PatternSyntaxException e) {
-							General.quickToast(context, R.string.hidden_post_titles_invalid_rule);
-							showAddHiddenPostTitleDialog(context);
+							input.setError(getString(R.string.hidden_post_titles_invalid_rule));
 							return;
 						}
 					} else if(value.isEmpty()) {
-						General.quickToast(context, R.string.hidden_post_titles_invalid_rule);
-						showAddHiddenPostTitleDialog(context);
+						input.setError(getString(R.string.hidden_post_titles_invalid_rule));
 						return;
 					} else {
 						PrefsUtility.pref_hidden_post_title_term_add(value);
 					}
+					addDialog.dismiss();
 					showHiddenPostTitlesDialog(context);
-				})
-				.show();
+				}));
+		addDialog.show();
 	}
 
 	private void showAddBlockedSubredditDialog(@NonNull final Context context) {
@@ -978,25 +987,26 @@ public final class SettingsFragment extends PreferenceFragmentCompat {
 		dialogContents.addView(input);
 		dialogContents.addView(caseInsensitive);
 
-		new MaterialAlertDialogBuilder(context)
+		final AlertDialog addDialog = new MaterialAlertDialogBuilder(context)
 				.setTitle(R.string.blocked_subreddits_add)
 				.setView(dialogContents)
 				.setNegativeButton(android.R.string.cancel, null)
-				.setPositiveButton(android.R.string.ok, (dialog, which) -> {
+				.setPositiveButton(android.R.string.ok, null)
+				.create();
+		addDialog.setOnShowListener(shown -> addDialog.getButton(
+				AlertDialog.BUTTON_POSITIVE).setOnClickListener(button -> {
 					final String value = input.getText().toString().trim();
 					if(value.length() >= 2 && value.startsWith("/") && value.endsWith("/")) {
 						final String expression = value.substring(1, value.length() - 1);
 						if(expression.isEmpty()) {
-							General.quickToast(context, R.string.blocked_subreddits_invalid_regex);
-							showAddBlockedSubredditDialog(context);
+							input.setError(getString(R.string.blocked_subreddits_invalid_regex));
 							return;
 						}
 						try {
 							PrefsUtility.pref_blocked_subreddit_regex_add(
 									caseInsensitive.isChecked() ? "(?i)" + expression : expression);
 						} catch(final PatternSyntaxException e) {
-							General.quickToast(context, R.string.blocked_subreddits_invalid_regex);
-							showAddBlockedSubredditDialog(context);
+							input.setError(getString(R.string.blocked_subreddits_invalid_regex));
 							return;
 						}
 					} else {
@@ -1005,14 +1015,14 @@ public final class SettingsFragment extends PreferenceFragmentCompat {
 									context,
 									new SubredditCanonicalId(value));
 						} catch(final InvalidSubredditNameException e) {
-							General.quickToast(context, R.string.blocked_subreddits_invalid_name);
-							showAddBlockedSubredditDialog(context);
+							input.setError(getString(R.string.blocked_subreddits_invalid_name));
 							return;
 						}
 					}
+					addDialog.dismiss();
 					showBlockedSubredditsDialog(context);
-				})
-				.show();
+				}));
+		addDialog.show();
 	}
 
 	//Based on https://stackoverflow.com/a/55724743

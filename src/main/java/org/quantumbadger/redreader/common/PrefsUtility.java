@@ -140,6 +140,10 @@ public final class PrefsUtility {
 				|| key.equals(context.getString(
 						R.string.pref_behaviour_mark_posts_as_read_on_scroll_key))
 				|| key.equals(context.getString(R.string.pref_behaviour_comment_min_key))
+				|| key.equals(context.getString(R.string.pref_blocked_subreddits_key))
+				|| key.equals(context.getString(R.string.pref_blocked_subreddit_regexes_key))
+				|| key.equals(context.getString(R.string.pref_hidden_post_title_terms_key))
+				|| key.equals(context.getString(R.string.pref_hidden_post_title_regexes_key))
 				|| key.equals(context.getString(R.string.pref_behaviour_pinned_subredditsort_key))
 				|| key.equals(context.getString(
 						R.string.pref_behaviour_blocked_subredditsort_key))

@@ -2052,4 +2052,8 @@
 	<string name="action_read_aloud">Read aloud</string>
 	<string name="action_stop_reading">Stop reading</string>
 	<string name="tts_error">Unable to read aloud. Check your text-to-speech settings.</string>
+	<string name="hidden_post_titles_term_label">%1$s (title contains)</string>
+	<string name="post_filter_regex_label">/%1$s/ (%2$s)</string>
+	<string name="post_filter_case_insensitive">case-insensitive</string>
+	<string name="post_filter_case_sensitive">case-sensitive</string>
 </resources>

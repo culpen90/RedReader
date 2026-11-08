@@ -60,6 +60,7 @@ import org.quantumbadger.redreader.common.General;
 import org.quantumbadger.redreader.common.GenericFactory;
 import org.quantumbadger.redreader.common.LinkHandler;
 import org.quantumbadger.redreader.common.PrefsUtility;
+import org.quantumbadger.redreader.common.PostFilter;
 import org.quantumbadger.redreader.common.Priority;
 import org.quantumbadger.redreader.common.RRError;
 import org.quantumbadger.redreader.common.TimestampBound;
@@ -102,8 +103,6 @@ import java.io.IOException;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
 import java.util.Locale;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -869,29 +868,10 @@ public class PostListingFragment extends RRFragment
 							// Grab this so we don't have to pull from the prefs every post
 							final HashSet<SubredditCanonicalId> blockedSubreddits
 									= new HashSet<>(PrefsUtility.pref_blocked_subreddits());
-							final ArrayList<String> hiddenTitleTerms = new ArrayList<>();
-							for(final String term : PrefsUtility.pref_hidden_post_title_terms()) {
-								hiddenTitleTerms.add(term.toLowerCase(Locale.ROOT));
-							}
-							final ArrayList<Pattern> hiddenTitlePatterns = new ArrayList<>();
-							for(final String expression
-									: PrefsUtility.pref_hidden_post_title_regexes()) {
-								try {
-									hiddenTitlePatterns.add(Pattern.compile(expression));
-								} catch(final PatternSyntaxException e) {
-									Log.w(TAG, "Ignoring invalid hidden post title regex", e);
-								}
-							}
-							final ArrayList<Pattern> blockedSubredditPatterns = new ArrayList<>();
-							for(final String expression
-									: PrefsUtility.pref_blocked_subreddit_regexes()) {
-								try {
-									blockedSubredditPatterns.add(Pattern.compile(
-											expression));
-								} catch(final PatternSyntaxException e) {
-									Log.w(TAG, "Ignoring invalid blocked subreddit regex", e);
-								}
-							}
+							final PostFilter postFilter = new PostFilter(
+									PrefsUtility.pref_hidden_post_title_terms(),
+									PrefsUtility.pref_hidden_post_title_regexes(),
+									PrefsUtility.pref_blocked_subreddit_regexes());
 
 							Log.i(TAG, "Inline previews: "
 									+ (inlinePreviews ? "ON" : "OFF"));
@@ -932,41 +912,17 @@ public class PostListingFragment extends RRFragment
 
 								mAfter = post.getName();
 
-								final String title = post.getTitle() == null
-										? ""
-										: post.getTitle().getDecoded();
-								final String lowercaseTitle = title.toLowerCase(Locale.ROOT);
-								boolean isTitleHidden = false;
-								for(final String term : hiddenTitleTerms) {
-									if(lowercaseTitle.contains(term)) {
-										isTitleHidden = true;
-										break;
-									}
-								}
-								if(!isTitleHidden) {
-									for(final Pattern pattern : hiddenTitlePatterns) {
-										if(pattern.matcher(title).find()) {
-											isTitleHidden = true;
-											break;
-										}
-									}
-								}
-								if(isTitleHidden) {
+								if(postFilter.hidesTitle(post.getTitle() == null
+										? null : post.getTitle().getDecoded())) {
+									mPostsNotShown = true;
 									continue;
 								}
 
 								final String subredditName = post.getSubreddit().getDecoded();
-								boolean blockedByRegex = false;
-								for(final Pattern pattern : blockedSubredditPatterns) {
-									if(pattern.matcher(subredditName).find()) {
-										blockedByRegex = true;
-										break;
-									}
-								}
-
 								final boolean isPostBlocked = subredditFilteringEnabled
-										&& (blockedByRegex || blockedSubreddits.contains(
-										new SubredditCanonicalId(subredditName)));
+										&& (postFilter.blocksSubreddit(subredditName)
+										|| blockedSubreddits.contains(
+												new SubredditCanonicalId(subredditName)));
 
 								if(!isPostBlocked
 										&& (!post.getOver_18() || isNsfwAllowed)
