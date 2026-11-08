@@ -272,6 +272,35 @@ class RemoveFromMultiredditDialogTest {
 	}
 
 	@Test
+	fun accountRemovedWhileMutationPendingPreventsCompletionNavigation() {
+		val fake = Fake()
+		var navigated = 0
+		val dialog = show(fake, Runnable { navigated++ })
+		fake.reads.single().listener.onSuccess(listOf("android"))
+		input(dialog.window!!.decorView)!!.setText("android")
+		dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+		ReflectionHelpers.setField(RedditAccountManager.getInstance(app),
+			"accountsCache", arrayListOf<RedditAccount>())
+		fake.writes.single().listener.onSuccess()
+		idle()
+		assertFalse(dialog.isShowing)
+		assertEquals(0, navigated)
+		assertTrue(fake.refreshed.isEmpty())
+	}
+
+	@Test
+	fun replacedCredentialsRejectLateMemberResponse() {
+		val fake = Fake()
+		val dialog = show(fake)
+		ReflectionHelpers.setField(RedditAccountManager.getInstance(app), "accountsCache",
+			arrayListOf(RedditAccount("Alice", null, 0, "replacement-client")))
+		fake.reads.single().listener.onSuccess(listOf("android"))
+		idle()
+		assertFalse(dialog.isShowing)
+		assertTrue(fake.writes.isEmpty())
+	}
+
+	@Test
 	fun malformedServerMemberNeverBecomesSelectable() {
 		val fake = Fake()
 		val dialog = show(fake)

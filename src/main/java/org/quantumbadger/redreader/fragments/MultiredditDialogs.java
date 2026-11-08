@@ -95,8 +95,11 @@ public final class MultiredditDialogs {
 					mContext, account, target, new MultiredditApi.ActionListener() {
 						@Override
 						public void onSuccess() {
-							RedditMultiredditSubscriptionManager.getSingleton(mContext, account)
-									.triggerUpdate(null, TimestampBound.NONE);
+							if(account.equals(RedditAccountManager.getInstance(mContext)
+									.getAccount(account.username))) {
+								RedditMultiredditSubscriptionManager.getSingleton(mContext, account)
+										.triggerUpdate(null, TimestampBound.NONE);
+							}
 							listener.onSuccess();
 						}
 
@@ -119,8 +122,11 @@ public final class MultiredditDialogs {
 					mContext, account, target, subreddits, new MultiredditApi.ActionListener() {
 						@Override
 						public void onSuccess() {
-							RedditMultiredditSubscriptionManager.getSingleton(mContext, account)
-									.triggerUpdate(null, TimestampBound.NONE);
+							if(account.equals(RedditAccountManager.getInstance(mContext)
+									.getAccount(account.username))) {
+								RedditMultiredditSubscriptionManager.getSingleton(mContext, account)
+										.triggerUpdate(null, TimestampBound.NONE);
+							}
 							listener.onSuccess();
 						}
 
@@ -177,7 +183,7 @@ public final class MultiredditDialogs {
 				.setPositiveButton(R.string.create_multireddit, null)
 				.setNegativeButton(android.R.string.cancel, null)
 				.create();
-		final Session session = new Session(activity, dialog, input, error);
+		final Session session = new Session(activity, account, dialog, input, error);
 		final Runnable submit = () -> {
 			if(session.isWorking() || !session.isUsable()) {
 				return;
@@ -267,7 +273,7 @@ public final class MultiredditDialogs {
 				.setPositiveButton(R.string.delete_multireddit, null)
 				.setNegativeButton(android.R.string.cancel, null)
 				.create();
-		final Session session = new Session(activity, dialog, null, error);
+		final Session session = new Session(activity, account, dialog, null, error);
 		dialog.setOnShowListener(shown -> {
 			session.attach();
 			dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
@@ -354,6 +360,7 @@ public final class MultiredditDialogs {
 
 	private static final class Session implements DefaultLifecycleObserver {
 		private final AppCompatActivity mActivity;
+		private final RedditAccount mAccount;
 		private final AlertDialog mDialog;
 		@Nullable private final EditText mInput;
 		private final TextView mError;
@@ -364,10 +371,12 @@ public final class MultiredditDialogs {
 
 		private Session(
 				final AppCompatActivity activity,
+				final RedditAccount account,
 				final AlertDialog dialog,
 				@Nullable final EditText input,
 				final TextView error) {
 			mActivity = activity;
+			mAccount = account;
 			mDialog = dialog;
 			mInput = input;
 			mError = error;
@@ -421,7 +430,14 @@ public final class MultiredditDialogs {
 		}
 
 		private boolean accepts(final int generation) {
-			return isUsable() && mWorking && generation == mGeneration;
+			if(!isUsable() || !mWorking || generation != mGeneration) {
+				return false;
+			}
+			if(!currentAccount(mActivity, mAccount)) {
+				mDialog.dismiss();
+				return false;
+			}
+			return true;
 		}
 
 		private void setPending(final int generation, final Pending pending) {

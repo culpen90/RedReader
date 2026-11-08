@@ -522,7 +522,11 @@ public class PostListingFragment extends RRFragment
 
 		setHeader(postListingHeader);
 		MultiredditActionMenus.attachToHeader(
-				getActivity(), mListingAccount, mPostListingURL, postListingHeader);
+				getActivity(), mListingAccount, mPostListingURL, postListingHeader, () -> {
+					if(hasListingAccount() && mOuter.isAttachedToWindow()) {
+						((OptionsMenuUtility.OptionsMenuPostsListener)getActivity()).onRefreshPosts();
+					}
+				});
 
 		if(subreddit != null) {
 			postListingHeader.setOnLongClickListener(view -> {

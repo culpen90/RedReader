@@ -60,6 +60,15 @@ public final class MultiredditActionMenus {
 			final RedditAccount account,
 			final PostListingURL url,
 			final View header) {
+		attachToHeader(activity, account, url, header, null);
+	}
+
+	public static void attachToHeader(
+			final AppCompatActivity activity,
+			final RedditAccount account,
+			final PostListingURL url,
+			final View header,
+			@Nullable final Runnable onMembersChanged) {
 		if(url instanceof SubredditPostListURL
 				&& ((SubredditPostListURL)url).type
 						== SubredditPostListURL.Type.SUBREDDIT_COMBINATION) {
@@ -80,8 +89,7 @@ public final class MultiredditActionMenus {
 					showMultireddit(activity, account, target,
 							() -> LinkHandler.onLinkClicked(
 									activity, Constants.Reddit.getNonAPIUri("/")),
-							() -> LinkHandler.onLinkClicked(activity,
-									Constants.Reddit.getNonAPIUri(target.getDisplayPath())));
+							onMembersChanged);
 					return true;
 				});
 			}

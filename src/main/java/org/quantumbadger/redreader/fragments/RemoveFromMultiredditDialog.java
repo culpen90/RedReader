@@ -227,7 +227,14 @@ public final class RemoveFromMultiredditDialog {
 		}
 
 		private boolean accepts(final int generation) {
-			return active() && mWorking && generation == mGeneration;
+			if(!active() || !mWorking || generation != mGeneration) {
+				return false;
+			}
+			if(!currentAccount(mActivity, mAccount)) {
+				mDialog.dismiss();
+				return false;
+			}
+			return true;
 		}
 
 		private void pending(final int generation, final MultiredditDialogs.Pending request) {
