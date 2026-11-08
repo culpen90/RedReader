@@ -2106,4 +2106,15 @@
 	<string name="api_action_failed_title">Action failed</string>
 	<string name="api_action_failed_message">Reddit reported an error: %1$s</string>
 	<string name="api_action_invalid_response">Reddit returned an invalid response. Try again.</string>
+	<string name="create_multireddit">Create multireddit</string>
+	<string name="multireddit_name_hint">Name (letters, numbers and underscores)</string>
+	<string name="multireddit_create_description">Create a private multireddit for %1$s with these %2$d subreddits.</string>
+	<string name="multireddit_sign_in_required">Sign in to create or edit a multireddit.</string>
+	<string name="multireddit_invalid_name">Use 1–50 letters, numbers or underscores.</string>
+	<string name="multireddit_invalid_members">Choose between 1 and 100 ordinary subreddits.</string>
+	<string name="multireddit_created">Created %1$s</string>
+	<string name="multireddit_action_failed">The multireddit action failed. Try again.</string>
+	<string name="pref_menus_subreddit_combinations_header">Combined subreddits</string>
+	<string name="pref_menus_subreddit_combinations_context_items_key" translatable="false">pref_menus_subreddit_combinations_context_items</string>
+	<string name="pref_menus_subreddit_combinations_context_items_title">Action menu items</string>
 </resources>

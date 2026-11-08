@@ -77,6 +77,7 @@ import org.quantumbadger.redreader.reddit.PostSort;
 import org.quantumbadger.redreader.reddit.RedditPostListItem;
 import org.quantumbadger.redreader.reddit.RedditSubredditManager;
 import org.quantumbadger.redreader.reddit.api.RedditSubredditSubscriptionManager;
+import org.quantumbadger.redreader.reddit.api.MultiredditActionMenus;
 import org.quantumbadger.redreader.reddit.kthings.JsonUtils;
 import org.quantumbadger.redreader.reddit.kthings.MaybeParseError;
 import org.quantumbadger.redreader.reddit.kthings.RedditIdAndType;
@@ -115,6 +116,8 @@ public class PostListingFragment extends RRFragment
 	private static final String SAVEDSTATE_FIRST_VISIBLE_POS = "firstVisiblePosition";
 
 	@NonNull private PostListingURL mPostListingURL;
+
+	@NonNull private final RedditAccount mListingAccount;
 
 	@Nullable private RedditSubreddit mSubreddit;
 
@@ -160,6 +163,8 @@ public class PostListingFragment extends RRFragment
 			final boolean forceDownload) {
 
 		super(parent, savedInstanceState);
+
+		mListingAccount = RedditAccountManager.getInstance(parent).getDefaultAccount();
 
 		mPostListingManager = new PostListingManager(parent);
 
@@ -279,7 +284,7 @@ public class PostListingFragment extends RRFragment
 
 		mRequest = createPostListingRequest(
 				UriString.from(mPostListingURL.generateJsonUri()),
-				RedditAccountManager.getInstance(context).getDefaultAccount(),
+				mListingAccount,
 				session,
 				downloadStrategy,
 				true);
@@ -502,6 +507,8 @@ public class PostListingFragment extends RRFragment
 				subreddit);
 
 		setHeader(postListingHeader);
+		MultiredditActionMenus.attachToHeader(
+				getActivity(), mListingAccount, mPostListingURL, postListingHeader);
 
 		if(subreddit != null) {
 			postListingHeader.setOnLongClickListener(view -> {
