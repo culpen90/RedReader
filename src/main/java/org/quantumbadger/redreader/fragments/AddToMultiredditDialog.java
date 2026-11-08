@@ -38,6 +38,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import org.quantumbadger.redreader.R;
 import org.quantumbadger.redreader.account.RedditAccount;
+import org.quantumbadger.redreader.account.RedditAccountManager;
 import org.quantumbadger.redreader.cache.CacheManager;
 import org.quantumbadger.redreader.cache.CacheRequest;
 import org.quantumbadger.redreader.common.General;
@@ -117,7 +118,7 @@ public final class AddToMultiredditDialog {
 				|| !activity.getLifecycle().getCurrentState().isAtLeast(Lifecycle.State.STARTED)) {
 			return null;
 		}
-		if(account.isAnonymous()) {
+		if(!availableAccount(activity, account)) {
 			General.quickToast(activity, R.string.multireddit_sign_in_required);
 			return null;
 		}
@@ -181,6 +182,13 @@ public final class AddToMultiredditDialog {
 		return dialog;
 	}
 
+	private static boolean availableAccount(
+			final AppCompatActivity activity,
+			final RedditAccount account) {
+		return !account.isAnonymous() && account.equals(
+				RedditAccountManager.getInstance(activity).getAccount(account.username));
+	}
+
 	private static final class Controller implements DefaultLifecycleObserver {
 		private final AppCompatActivity mActivity;
 		private final RedditAccount mAccount;
@@ -196,6 +204,7 @@ public final class AddToMultiredditDialog {
 		private boolean mLoading;
 		private boolean mBusy;
 		private boolean mNamesReady;
+		private int mGeneration;
 
 		private Controller(
 				final AppCompatActivity activity,
@@ -215,8 +224,20 @@ public final class AddToMultiredditDialog {
 		}
 
 		private boolean active() {
-			return !mClosed && mDialog.isShowing()
-					&& !mActivity.isFinishing() && !mActivity.isDestroyed();
+			if(mClosed || !mDialog.isShowing()
+					|| mActivity.isFinishing() || mActivity.isDestroyed()) {
+				return false;
+			}
+			if(!availableAccount(mActivity, mAccount)) {
+				close();
+				mDialog.dismiss();
+				return false;
+			}
+			return true;
+		}
+
+		private boolean accepts(final int generation, final boolean pending) {
+			return active() && pending && generation == mGeneration;
 		}
 
 		private void load() {
@@ -225,13 +246,18 @@ public final class AddToMultiredditDialog {
 			}
 			mLoading = true;
 			mNamesReady = false;
+			final int generation = ++mGeneration;
+			if(mNamesRequest != null) {
+				mNamesRequest.cancel();
+				mNamesRequest = null;
+			}
 			mStatus.setText(R.string.multireddit_loading_names);
 			updateControls();
 			final CacheRequest request = mOperations.loadNames(mAccount,
 					new MultiredditApi.MembersListener() {
 						@Override
 						public void onSuccess(@NonNull final List<String> names) {
-							if(!active()) {
+							if(!accepts(generation, mLoading)) {
 								return;
 							}
 							mLoading = false;
@@ -249,7 +275,7 @@ public final class AddToMultiredditDialog {
 
 						@Override
 						public void onFailure(@NonNull final RRError error) {
-							if(!active()) {
+							if(!accepts(generation, mLoading)) {
 								return;
 							}
 							mLoading = false;
@@ -257,7 +283,7 @@ public final class AddToMultiredditDialog {
 							updateControls();
 						}
 					});
-			if(active()) {
+			if(active() && generation == mGeneration) {
 				mNamesRequest = request;
 			} else {
 				request.cancel();
@@ -282,6 +308,11 @@ public final class AddToMultiredditDialog {
 			}
 			final MultiredditTarget target = MultiredditTarget.forName(mAccount, matching);
 			mBusy = true;
+			final int generation = ++mGeneration;
+			if(mMutationRequest != null) {
+				mMutationRequest.cancel();
+				mMutationRequest = null;
+			}
 			mInput.setError(null);
 			mStatus.setText(R.string.multireddit_adding);
 			updateControls();
@@ -289,7 +320,7 @@ public final class AddToMultiredditDialog {
 					new MultiredditApi.ActionListener() {
 						@Override
 						public void onSuccess() {
-							if(!active()) {
+							if(!accepts(generation, mBusy)) {
 								return;
 							}
 							mOperations.refresh(mAccount);
@@ -302,7 +333,7 @@ public final class AddToMultiredditDialog {
 
 						@Override
 						public void onFailure(@NonNull final RRError error) {
-							if(!active()) {
+							if(!accepts(generation, mBusy)) {
 								return;
 							}
 							mBusy = false;
@@ -311,7 +342,7 @@ public final class AddToMultiredditDialog {
 							updateControls();
 						}
 					});
-			if(active()) {
+			if(active() && generation == mGeneration) {
 				mMutationRequest = request;
 			} else {
 				request.cancel();
@@ -331,7 +362,11 @@ public final class AddToMultiredditDialog {
 		}
 
 		private void close() {
+			if(mClosed) {
+				return;
+			}
 			mClosed = true;
+			mGeneration++;
 			mActivity.getLifecycle().removeObserver(this);
 			if(mNamesRequest != null) {
 				mNamesRequest.cancel();

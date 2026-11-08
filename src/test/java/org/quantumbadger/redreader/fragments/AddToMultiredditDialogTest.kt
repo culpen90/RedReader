@@ -34,6 +34,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.quantumbadger.redreader.R
 import org.quantumbadger.redreader.account.RedditAccount
+import org.quantumbadger.redreader.account.RedditAccountManager
 import org.quantumbadger.redreader.cache.CacheRequest
 import org.quantumbadger.redreader.cache.CacheRequestCallbacks
 import org.quantumbadger.redreader.common.General
@@ -44,6 +45,7 @@ import org.quantumbadger.redreader.common.UriString
 import org.quantumbadger.redreader.http.HTTPBackend
 import org.quantumbadger.redreader.reddit.api.MultiredditApi
 import org.quantumbadger.redreader.reddit.api.MultiredditTarget
+import org.quantumbadger.redreader.reddit.api.RedditOAuth
 import org.quantumbadger.redreader.reddit.things.SubredditCanonicalId
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
@@ -59,9 +61,11 @@ import java.util.concurrent.atomic.AtomicReference
 class AddToMultiredditDialogTest {
 
 	private val app get() = RuntimeEnvironment.getApplication()
-	private val alice = RedditAccount("Alice", null, 0, null)
+	private val alice = RedditAccount("Alice", RedditOAuth.RefreshToken("alice"), 1, "client")
+	private val bob = RedditAccount("Bob", RedditOAuth.RefreshToken("bob"), 2, "client")
 	private val subreddit = SubredditCanonicalId("android")
 	private lateinit var controller: ActivityController<AppCompatActivity>
+	private lateinit var accounts: RedditAccountManager
 	private val activity get() = controller.get()
 
 	@Before
@@ -74,6 +78,10 @@ class AddToMultiredditDialogTest {
 		ReflectionHelpers.setStaticField(PrefsUtility::class.java, "sharedPrefs", prefs)
 		ReflectionHelpers.setStaticField(PrefsUtility::class.java, "mRes", app.resources)
 		ReflectionHelpers.setStaticField(PrefsUtility::class.java, "appContext", app)
+		ReflectionHelpers.setStaticField(RedditAccountManager::class.java, "singleton", null)
+		accounts = RedditAccountManager.getInstance(app)
+		accounts.addAccount(alice)
+		accounts.setDefaultAccount(alice)
 		controller = Robolectric.buildActivity(AppCompatActivity::class.java)
 		controller.get().setTheme(R.style.RR_Dark)
 		controller.setup()
@@ -84,6 +92,7 @@ class AddToMultiredditDialogTest {
 		if(activity.lifecycle.currentState == Lifecycle.State.RESUMED) controller.pause()
 		if(activity.lifecycle.currentState == Lifecycle.State.STARTED) controller.stop()
 		if(activity.lifecycle.currentState != Lifecycle.State.DESTROYED) controller.destroy()
+		accounts.close()
 		idle()
 	}
 
@@ -159,6 +168,9 @@ class AddToMultiredditDialogTest {
 	fun loadedNamesAndSubmissionRemainBoundToCapturedAccount() {
 		val operations = Operations()
 		val (dialog, input) = open(operations)
+		accounts.addAccount(bob)
+		accounts.setDefaultAccount(bob)
+		assertEquals(bob, accounts.defaultAccount)
 		operations.namesListener.onSuccess(listOf("news"))
 		input.setText("NEWS")
 		dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
@@ -280,5 +292,109 @@ class AddToMultiredditDialogTest {
 		assertNull(AddToMultiredditDialog.show(activity,
 			alice, SubredditCanonicalId("android+java"), operations))
 		assertEquals(0, operations.loads)
+	}
+
+	@Test
+	fun removedOrReplacedAccountsCannotOpenTheDialog() {
+		val operations = Operations()
+		accounts.deleteAccount(alice)
+		assertNull(AddToMultiredditDialog.show(activity, alice, subreddit, operations))
+		accounts.addAccount(RedditAccount("Alice", RedditOAuth.RefreshToken("new"), 1, "client"))
+		assertNull(AddToMultiredditDialog.show(activity, alice, subreddit, operations))
+		assertEquals(0, operations.loads)
+	}
+
+	@Test
+	fun logoutBeforeSubmitCancelsTheDialogWithoutUsingTheOldToken() {
+		val operations = Operations()
+		val (dialog, input) = open(operations)
+		operations.namesListener.onSuccess(listOf("news"))
+		input.setText("news")
+		accounts.deleteAccount(alice)
+		dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+		idle()
+		assertFalse(dialog.isShowing)
+		assertTrue(operations.addedAccounts.isEmpty())
+		assertTrue(operations.requests.all { ReflectionHelpers.getField<Boolean>(it, "cancelled") })
+	}
+
+	@Test
+	fun replacedCredentialsBeforeSubmitCannotUseTheCapturedToken() {
+		val operations = Operations()
+		val (dialog, input) = open(operations)
+		operations.namesListener.onSuccess(listOf("news"))
+		input.setText("news")
+		accounts.addAccount(RedditAccount("Alice", RedditOAuth.RefreshToken("new"), 1, "client"))
+		input.onEditorAction(EditorInfo.IME_ACTION_GO)
+		idle()
+		assertFalse(dialog.isShowing)
+		assertTrue(operations.addedAccounts.isEmpty())
+	}
+
+	@Test
+	fun accountRemovalWhileLoadingSuppressesLateChoicesAndRetry() {
+		val operations = Operations()
+		val (dialog, _) = open(operations)
+		accounts.deleteAccount(alice)
+		operations.namesListener.onSuccess(listOf("news"))
+		idle()
+		assertFalse(dialog.isShowing)
+		assertTrue(operations.requests.all { ReflectionHelpers.getField<Boolean>(it, "cancelled") })
+		assertTrue(operations.addedAccounts.isEmpty())
+	}
+
+	@Test
+	fun replacedCredentialsDuringMutationSuppressSuccessRefreshAndToast() {
+		val operations = Operations()
+		val (dialog, input) = open(operations)
+		operations.namesListener.onSuccess(listOf("news"))
+		input.setText("news")
+		input.onEditorAction(EditorInfo.IME_ACTION_GO)
+		val toastCount = org.robolectric.shadows.ShadowToast.shownToastCount()
+		accounts.addAccount(RedditAccount("Alice", RedditOAuth.RefreshToken("new"), 1, "client"))
+		operations.mutationListener.onSuccess()
+		idle()
+		assertFalse(dialog.isShowing)
+		assertTrue(operations.refreshed.isEmpty())
+		assertEquals(toastCount, org.robolectric.shadows.ShadowToast.shownToastCount())
+		assertTrue(operations.requests.all { ReflectionHelpers.getField<Boolean>(it, "cancelled") })
+	}
+
+	@Test
+	fun retryLoadRejectsOldAndDuplicateCompletionCallbacks() {
+		val operations = Operations()
+		val (dialog, input) = open(operations)
+		val old = operations.namesListener
+		old.onFailure(RRError("Failure", "Offline", false))
+		dialog.getButton(AlertDialog.BUTTON_NEUTRAL).performClick()
+		operations.namesListener.onSuccess(listOf("news"))
+		old.onSuccess(listOf("old"))
+		old.onFailure(RRError("Old", "Outdated", false))
+		operations.namesListener.onSuccess(listOf("duplicate"))
+		input.setText("news")
+		input.onEditorAction(EditorInfo.IME_ACTION_GO)
+		assertEquals("news", operations.targets.single().name)
+		dialog.dismiss()
+	}
+
+	@Test
+	fun retryMutationIgnoresTheFirstRequestsLateSuccessAndFailure() {
+		val operations = Operations()
+		val (dialog, input) = open(operations)
+		operations.namesListener.onSuccess(listOf("news"))
+		input.setText("news")
+		input.onEditorAction(EditorInfo.IME_ACTION_GO)
+		val old = operations.mutationListener
+		old.onFailure(RRError("Failure", "Retry", false))
+		input.onEditorAction(EditorInfo.IME_ACTION_GO)
+		old.onSuccess()
+		old.onFailure(RRError("Old", "Outdated", false))
+		assertTrue(dialog.isShowing)
+		assertFalse(input.isEnabled)
+		assertTrue(operations.refreshed.isEmpty())
+		operations.mutationListener.onSuccess()
+		idle()
+		assertFalse(dialog.isShowing)
+		assertEquals(listOf(alice), operations.refreshed)
 	}
 }
