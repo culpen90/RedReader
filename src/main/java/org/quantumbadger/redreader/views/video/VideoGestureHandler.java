@@ -169,7 +169,7 @@ public class VideoGestureHandler
 	}
 
 	@Override
-	public void onFingerUp(final FingerTracker.Finger finger) {
+	public void onFingerUp(final FingerTracker.Finger finger, final boolean cancelled) {
 
 		if(mSpareFingers.remove(finger)) {
 			return;
@@ -185,7 +185,7 @@ public class VideoGestureHandler
 
 				mListener.onHorizontalSwipeEnd();
 
-				if(finger.mDownDuration < TAP_MAX_DURATION_MS) {
+				if(!cancelled && finger.mDownDuration < TAP_MAX_DURATION_MS) {
 					mListener.onSingleTap();
 				}
 
