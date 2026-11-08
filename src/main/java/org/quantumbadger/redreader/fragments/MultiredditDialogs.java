@@ -64,17 +64,17 @@ public final class MultiredditDialogs {
 
 	interface Backend {
 		default Pending create(
-				RedditAccount account,
-				MultiredditTarget target,
-				Collection<SubredditCanonicalId> subreddits,
-				MultiredditApi.ActionListener listener) {
+				final RedditAccount account,
+				final MultiredditTarget target,
+				final Collection<SubredditCanonicalId> subreddits,
+				final MultiredditApi.ActionListener listener) {
 			throw new UnsupportedOperationException();
 		}
 
 		default Pending delete(
-				RedditAccount account,
-				MultiredditTarget target,
-				MultiredditApi.ActionListener listener) {
+				final RedditAccount account,
+				final MultiredditTarget target,
+				final MultiredditApi.ActionListener listener) {
 			throw new UnsupportedOperationException();
 		}
 	}
