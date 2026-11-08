@@ -24,6 +24,7 @@ import android.os.Looper
 import android.view.View
 import androidx.appcompat.view.menu.MenuBuilder
 import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.lifecycle.Lifecycle
 import org.junit.After
 import org.junit.Assert.*
@@ -242,7 +243,9 @@ class InboxExitActivityTest {
 		populate(host)
 		val first = visit(host.get()).savedIds().toSet()
 		val recycler = ReflectionHelpers.getField<RecyclerView>(host.get(), "mRecyclerView")
-		recycler.scrollToPosition(15)
+		(recycler.layoutManager as LinearLayoutManager).scrollToPositionWithOffset(15, 0)
+		recycler.requestLayout()
+		render(host.get())
 		render(host.get())
 		val scrolled = visit(host.get()).savedIds().toSet()
 		assertTrue(scrolled.size > first.size)
@@ -422,9 +425,14 @@ class InboxExitActivityTest {
 	fun commentRepliesUseTheSameVisibleItemReadPath() {
 		enable()
 		val host = open()
-		complete(RecordingCache.requests.single(), listing(1)
-			.replace("\"kind\":\"t4\"", "\"kind\":\"t1\"")
-			.replace("t4_m0", "t1_m0"))
+		complete(RecordingCache.requests.single(), """
+			{"kind":"Listing","data":{"children":[{"kind":"t1","data":{
+			"id":"m0","name":"t1_m0","author":"sender","subreddit":"android",
+			"body":"A reply","body_html":"&lt;p&gt;A reply&lt;/p&gt;",
+			"link_id":"t3_post","parent_id":"t3_post",
+			"context":"/r/android/comments/post/title/m0",
+			"created_utc":1700000000.0,"new":true}}],"after":null}}
+		""".trimIndent())
 		render(host.get())
 		host.get().finish()
 		assertEquals(listOf("t1_m0"), writes().flatMap { ids(it) })
@@ -459,6 +467,9 @@ class InboxExitActivityTest {
 		host.get().onBackPressedDispatcher.onBackPressed()
 		idle()
 		assertTrue(host.get().isFinishing)
+		// The platform finishes through its transition path. Complete the lifecycle
+		// boundary which submits the captured IDs when finish() itself is bypassed.
+		host.pause().stop()
 		assertTrue(writes().isNotEmpty())
 	}
 
@@ -470,6 +481,7 @@ class InboxExitActivityTest {
 		host.get().findViewById<View>(R.id.actionbar_title_outer).performClick()
 		idle()
 		assertTrue(host.get().isFinishing)
+		host.pause().stop()
 		assertTrue(writes().isNotEmpty())
 	}
 
