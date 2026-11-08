@@ -999,6 +999,7 @@ public class PostListingFragment extends RRFragment
 
 									final RedditPreparedPost preparedPost = new RedditPreparedPost(
 											activity,
+											user,
 											cm,
 											positionInList,
 											parsedPost,
@@ -1016,7 +1017,8 @@ public class PostListingFragment extends RRFragment
 									}
 
 									if(precacheComments) {
-										precacheComments(activity, preparedPost, positionInList);
+										precacheComments(
+												activity, user, preparedPost, positionInList);
 									}
 
 									LinkHandler.getImageInfo(
@@ -1151,6 +1153,7 @@ public class PostListingFragment extends RRFragment
 
 	private void precacheComments(
 			final Activity activity,
+			@NonNull final RedditAccount user,
 			@NonNull final RedditPreparedPost preparedPost,
 			final int positionInList) {
 
@@ -1162,7 +1165,7 @@ public class PostListingFragment extends RRFragment
 		CacheManager.getInstance(activity)
 				.makeRequest(CacheRequest.newPrecacheRequest(
 						url,
-						RedditAccountManager.getInstance(activity).getDefaultAccount(),
+						user,
 						new Priority(
 								Constants.Priority.COMMENT_PRECACHE,
 							positionInList),

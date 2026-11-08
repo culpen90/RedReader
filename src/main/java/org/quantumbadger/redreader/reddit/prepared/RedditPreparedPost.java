@@ -102,11 +102,28 @@ public final class RedditPreparedPost implements RedditChangeDataManager.Listene
 			final boolean allowHighResThumbnails,
 			final boolean showInlinePreviews) {
 
+		this(context, RedditAccountManager.getInstance(context).getDefaultAccount(), cm,
+				listId, post, timestamp, showSubreddit, showThumbnails,
+				allowHighResThumbnails, showInlinePreviews);
+	}
+
+	/** Uses the account which fetched this post, even if the default changes before delivery. */
+	public RedditPreparedPost(
+			final Context context,
+			@NonNull final RedditAccount user,
+			final CacheManager cm,
+			final int listId,
+			final RedditParsedPost post,
+			final TimestampUTC timestamp,
+			final boolean showSubreddit,
+			final boolean showThumbnails,
+			final boolean allowHighResThumbnails,
+			final boolean showInlinePreviews) {
+
 		this.src = post;
 		this.showSubreddit = showSubreddit;
 		mShowInlinePreviews = showInlinePreviews;
 
-		final RedditAccount user = RedditAccountManager.getInstance(context).getDefaultAccount();
 		mChangeDataManager = RedditChangeDataManager.getInstance(user);
 
 		isArchived = post.isArchived();
@@ -882,10 +899,7 @@ public final class RedditPreparedPost implements RedditChangeDataManager.Listene
 	public void markAsRead(
 		final Context context,
 		final Boolean read) {
-		final RedditAccount user =
-				RedditAccountManager.getInstance(context).getDefaultAccount();
-		RedditChangeDataManager.getInstance(user)
-				.markRead(TimestampUTC.now(), src.getIdAndType(), read);
+		mChangeDataManager.markRead(TimestampUTC.now(), src.getIdAndType(), read);
 	}
 
 	public boolean isUpvoted() {

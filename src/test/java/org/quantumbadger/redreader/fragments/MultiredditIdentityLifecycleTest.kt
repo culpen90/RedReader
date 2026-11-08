@@ -25,6 +25,7 @@ import org.quantumbadger.redreader.activities.ChangelogActivity
 import org.quantumbadger.redreader.activities.PostListingActivity
 import org.quantumbadger.redreader.adapters.MainMenuListingManager
 import org.quantumbadger.redreader.adapters.MainMenuSelectionListener
+import org.quantumbadger.redreader.adapters.PostListingManager
 import org.quantumbadger.redreader.cache.CacheManager
 import org.quantumbadger.redreader.cache.CacheRequest
 import org.quantumbadger.redreader.cache.downloadstrategy.DownloadStrategyAlways
@@ -37,6 +38,8 @@ import org.quantumbadger.redreader.common.time.TimestampUTC
 import org.quantumbadger.redreader.reddit.api.MultiredditActionMenus
 import org.quantumbadger.redreader.reddit.api.MultiredditTarget
 import org.quantumbadger.redreader.reddit.api.RedditOAuth
+import org.quantumbadger.redreader.reddit.RedditPostListItem
+import org.quantumbadger.redreader.reddit.prepared.RedditChangeDataManager
 import org.quantumbadger.redreader.http.HTTPBackend
 import org.quantumbadger.redreader.reddit.kthings.RedditIdAndType
 import org.quantumbadger.redreader.reddit.url.PostListingURL
@@ -196,6 +199,43 @@ class MultiredditIdentityLifecycleTest {
 		assertEquals(2, RecordingCache.requests.size)
 		assertTrue(RecordingCache.requests.last().url.value.contains("after=t3_after"))
 		assertTrue(RecordingCache.requests.all { it.user === alice })
+	}
+
+	@Test
+	fun deliveredPageKeepsVotesSavedReadStateAndCommentPrecacheInCapturedAccount() {
+		val fragment = openListing()
+		switchDefault()
+		nextPage(fragment)
+		val page = RecordingCache.requests.last()
+		val id = RedditIdAndType("t3_accountstate")
+		val aliceState = RedditChangeDataManager.getInstance(alice)
+		val bobState = RedditChangeDataManager.getInstance(bob)
+		assertFalse(bobState.isUpvoted(id))
+		assertFalse(bobState.isSaved(id))
+		assertFalse(bobState.isRead(id))
+		complete(page, """{"kind":"Listing","data":{"after":null,"children":[
+			{"kind":"t3","data":{"id":"accountstate","name":"t3_accountstate",
+			"title":"Captured account","subreddit":"android","score":10,"num_comments":1,
+			"created_utc":1,"permalink":"/r/android/comments/accountstate/captured",
+			"url":"https://example.invalid/captured","domain":"example.invalid",
+			"is_self":true,"likes":true,"saved":true,"clicked":false}}
+		]}}""")
+		val manager = ReflectionHelpers.getField<PostListingManager>(fragment, "mPostListingManager")
+		val row = (0 until manager.adapter.itemCount).map { manager.getItemAtPosition(it) }
+			.filterIsInstance<RedditPostListItem>().single().post
+		assertTrue(row.isUpvoted)
+		assertTrue(row.isSaved)
+		assertTrue(aliceState.isUpvoted(id))
+		assertTrue(aliceState.isSaved(id))
+		assertFalse(bobState.isUpvoted(id))
+		assertFalse(bobState.isSaved(id))
+		row.markAsRead(activity, true)
+		assertTrue(row.isRead)
+		assertTrue(aliceState.isRead(id))
+		assertFalse(bobState.isRead(id))
+		val precache = RecordingCache.requests.filter { it.fileType == Constants.FileType.COMMENT_LIST }
+		assertEquals(1, precache.size)
+		assertSame(alice, precache.single().user)
 	}
 
 	@Test
