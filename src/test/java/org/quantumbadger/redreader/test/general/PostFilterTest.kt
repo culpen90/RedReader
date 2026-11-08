@@ -18,6 +18,8 @@
 package org.quantumbadger.redreader.test.general
 
 import android.view.View
+import android.os.Looper
+import org.robolectric.Shadows
 import android.view.ViewGroup
 import android.widget.EditText
 import androidx.appcompat.app.AlertDialog
@@ -184,8 +186,10 @@ class PostFilterTest {
 				.findFragmentById(R.id.single_fragment_container) as SettingsFragment
 			val preference = fragment.findPreference<Preference>(activity.getString(preferenceKey))!!
 			preference.onPreferenceClickListener!!.onPreferenceClick(preference)
+			Shadows.shadowOf(Looper.getMainLooper()).idle()
 			(ShadowDialog.getLatestDialog() as AlertDialog)
 				.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+			Shadows.shadowOf(Looper.getMainLooper()).idle()
 			val dialog = ShadowDialog.getLatestDialog() as AlertDialog
 			val input = findInput(dialog.window!!.decorView)!!
 			input.setText(value)
