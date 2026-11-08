@@ -299,6 +299,10 @@ class InlinePreviewTransportTest {
 			manager.makeRequest(request(capture, target))
 			assertTrue(capture.finished.await(5, TimeUnit.SECONDS))
 			assertEquals(1, capture.failures)
+			assertTrue(capture.failure!!.t is IOException)
+			assertEquals(if (compression == CacheCompressionType.NONE)
+				"Inline image preview exceeds " + cap + " bytes"
+				else "Inline image preview cache is not a raw image", capture.failure!!.t!!.message)
 			assertEquals(0, capture.completed)
 			assertEquals(0, capture.cached)
 			assertNull(capture.stream)
