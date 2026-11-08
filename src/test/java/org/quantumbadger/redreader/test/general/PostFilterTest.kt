@@ -36,6 +36,8 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
+import org.robolectric.util.ReflectionHelpers
+import java.util.concurrent.atomic.AtomicReference
 import org.robolectric.shadows.ShadowDialog
 
 @RunWith(RobolectricTestRunner::class)
@@ -52,7 +54,12 @@ class PostFilterTest {
 
 	@Before
 	fun resetPreferences() {
-		PrefsUtility.init(context)
+		ReflectionHelpers.getStaticField<AtomicReference<Any?>>(General::class.java, "mPrefs")
+			.set(null)
+		ReflectionHelpers.setStaticField(PrefsUtility::class.java, "mRes", context.resources)
+		ReflectionHelpers.setStaticField(PrefsUtility::class.java, "sharedPrefs",
+			General.getSharedPrefs(context))
+		ReflectionHelpers.setStaticField(PrefsUtility::class.java, "appContext", context)
 		keys.forEach { General.getSharedPrefs(context).edit()
 			.putString(context.getString(it), "").apply() }
 	}
