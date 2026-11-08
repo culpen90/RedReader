@@ -55,6 +55,7 @@ import org.quantumbadger.redreader.reddit.kthings.RedditPost;
 import org.quantumbadger.redreader.reddit.kthings.RedditThing;
 import org.quantumbadger.redreader.reddit.kthings.RedditThingResponse;
 import org.quantumbadger.redreader.reddit.kthings.UrlEncodedString;
+import org.quantumbadger.redreader.reddit.prepared.InlineCommentMediaPolicy;
 import org.quantumbadger.redreader.reddit.prepared.RedditChangeDataManager;
 import org.quantumbadger.redreader.reddit.prepared.RedditParsedComment;
 import org.quantumbadger.redreader.reddit.prepared.RedditParsedPost;
@@ -137,6 +138,8 @@ public class CommentListingRequest {
 			final boolean fromCache
 	) {
 		String parentPostAuthor = null;
+		Boolean parentPostNsfw = null;
+		Boolean parentPostSpoiler = null;
 
 		if(mActivity instanceof SessionChangeListener) {
 			((SessionChangeListener)mActivity).onSessionChanged(
@@ -147,6 +150,9 @@ public class CommentListingRequest {
 
 		final Integer minimumCommentScore
 				= PrefsUtility.pref_behaviour_comment_min();
+
+		final boolean showInlineMedia = PrefsUtility.images_inline_comment_media()
+				.isEnabled(General.isConnectionWifi(mContext));
 
 		if(fromCache) {
 			AndroidCommon.runOnUiThread(()
@@ -197,6 +203,9 @@ public class CommentListingRequest {
 
 			parentPostAuthor = parsedPost.getAuthor();
 
+			parentPostNsfw = post.getOver_18();
+			parentPostSpoiler = post.getSpoiler();
+
 			commentListing = ((RedditThing.Listing)((RedditThingResponse.Multiple) thingResponse)
 					.getThings().get(1)).getData();
 		}
@@ -215,7 +224,10 @@ public class CommentListingRequest {
 					null,
 					items,
 					minimumCommentScore,
-					parentPostAuthor);
+					parentPostAuthor,
+					showInlineMedia,
+					parentPostNsfw,
+					parentPostSpoiler);
 		}
 
 		final RedditChangeDataManager changeDataManager
@@ -296,7 +308,10 @@ public class CommentListingRequest {
 			final RedditCommentListItem parent,
 			final ArrayList<RedditCommentListItem> output,
 			final Integer minimumCommentScore,
-			final String parentPostAuthor) {
+			final String parentPostAuthor,
+			final boolean showInlineMediaInThread,
+			@Nullable final Boolean parentPostNsfw,
+			@Nullable final Boolean parentPostSpoiler) {
 
 		// TODO handle gracefully by showing error message
 		final RedditThing thing = maybeThing.ok();
@@ -378,9 +393,19 @@ public class CommentListingRequest {
 			final boolean neverAutoCollapse = mCommentListingURL != null
 					&& mCommentListingURL.pathType() == RedditURLParser.USER_COMMENT_LISTING_URL;
 
+			// A profile listing has no parent spoiler status, and may omit the NSFW flag.
+			// Treat unknown provenance conservatively instead of assuming it is safe.
+			final boolean showInlineMedia = showInlineMediaInThread
+					&& InlineCommentMediaPolicy.isAllowed(
+							parentPostNsfw,
+							parentPostSpoiler,
+							comment.getOver_18(),
+							PrefsUtility.images_inline_image_previews_nsfw(),
+							PrefsUtility.images_inline_image_previews_spoiler());
+
 			final RedditCommentListItem item;
 			final RedditRenderableComment renderableComment = new RedditRenderableComment(
-					new RedditParsedComment(comment, mActivity),
+					new RedditParsedComment(comment, mActivity, showInlineMedia),
 					parentPostAuthor,
 					minimumCommentScore,
 					currentCanonicalUserName,
@@ -419,7 +444,10 @@ public class CommentListingRequest {
 							item,
 							output,
 							minimumCommentScore,
-							parentPostAuthor);
+							parentPostAuthor,
+							showInlineMediaInThread,
+							parentPostNsfw,
+							parentPostSpoiler);
 				}
 			}
 		}
