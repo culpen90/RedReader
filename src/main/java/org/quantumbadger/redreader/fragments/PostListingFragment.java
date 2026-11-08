@@ -806,6 +806,15 @@ public class PostListingFragment extends RRFragment
 									&& mPostListingURL.pathType()
 									!= RedditURLParser.USER_POST_LISTING_URL;
 
+							final boolean hideFewComments
+									= PrefsUtility.pref_behaviour_hide_few_comments();
+
+							final int minComments = hideFewComments
+									? PrefsUtility.pref_behaviour_min_comments()
+									: 0;
+
+							final AtomicInteger filteredCommentCount = new AtomicInteger(0);
+
 							final boolean isConnectionWifi = General.isConnectionWifi(activity);
 
 							final boolean inlinePreviews
@@ -928,6 +937,13 @@ public class PostListingFragment extends RRFragment
 										&& (!post.getOver_18() || isNsfwAllowed)
 										&& mPostIds.add(post.getIdAlone())) {
 
+									// Skip adding this post if it has too few comments
+									if(hideFewComments && post.getNum_comments() < minComments) {
+										mPostsNotShown = true;
+										filteredCommentCount.incrementAndGet();
+										continue;
+									}
+
 									final boolean downloadThisThumbnail = downloadThumbnails
 											&& (!post.getOver_18() || showNsfwThumbnails)
 											&& (!post.getSpoiler() || showSpoilerThumbnails);
@@ -1047,6 +1063,19 @@ public class PostListingFragment extends RRFragment
 											.setText(emptyViewText);
 
 									mPostListingManager.addViewToItems(emptyView);
+								}
+
+								// Show toast if posts were filtered due to few comments
+								if(firstDownload && filteredCommentCount.get() > 0) {
+									final String message =
+										getContext().getResources().getQuantityString(
+											R.plurals.posts_filtered_few_comments,
+											filteredCommentCount.get(),
+											filteredCommentCount.get(),
+											minComments);
+									Toast
+										.makeText(getContext(), message, Toast.LENGTH_SHORT)
+										.show();
 								}
 
 								onPostsAdded();
