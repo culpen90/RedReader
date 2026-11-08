@@ -26,10 +26,19 @@ import org.quantumbadger.redreader.http.okhttp.OKHTTPBackend
 import java.io.InputStream
 
 abstract class HTTPBackend {
-    data class RequestDetails(
-        val url: UriString,
-        val requestBody: HTTPRequestBody?
-    )
+	enum class Method { GET, POST, PUT, DELETE }
+
+	data class RequestDetails @JvmOverloads constructor(
+		val url: UriString,
+		val requestBody: HTTPRequestBody?,
+		val method: Method = if (requestBody == null) Method.GET else Method.POST
+	) {
+		init {
+			require(method != Method.GET || requestBody == null) {
+				"GET requests cannot carry a body"
+			}
+		}
+	}
 
     interface Request {
         fun executeInThisThread(listener: Listener)

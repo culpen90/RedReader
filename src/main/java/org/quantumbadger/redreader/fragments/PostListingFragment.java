@@ -77,6 +77,7 @@ import org.quantumbadger.redreader.reddit.PostSort;
 import org.quantumbadger.redreader.reddit.RedditPostListItem;
 import org.quantumbadger.redreader.reddit.RedditSubredditManager;
 import org.quantumbadger.redreader.reddit.api.RedditSubredditSubscriptionManager;
+import org.quantumbadger.redreader.reddit.api.MultiredditActionMenus;
 import org.quantumbadger.redreader.reddit.kthings.JsonUtils;
 import org.quantumbadger.redreader.reddit.kthings.MaybeParseError;
 import org.quantumbadger.redreader.reddit.kthings.RedditIdAndType;
@@ -113,8 +114,11 @@ public class PostListingFragment extends RRFragment
 	private static final String TAG = "PostListingFragment";
 
 	private static final String SAVEDSTATE_FIRST_VISIBLE_POS = "firstVisiblePosition";
+	private static final String SAVEDSTATE_ACCOUNT = "listingAccount";
 
 	@NonNull private PostListingURL mPostListingURL;
+
+	@Nullable private final RedditAccount mListingAccount;
 
 	@Nullable private RedditSubreddit mSubreddit;
 
@@ -160,6 +164,12 @@ public class PostListingFragment extends RRFragment
 			final boolean forceDownload) {
 
 		super(parent, savedInstanceState);
+
+		final RedditAccountManager accounts = RedditAccountManager.getInstance(parent);
+		final String restoredAccount = savedInstanceState == null
+				? null : savedInstanceState.getString(SAVEDSTATE_ACCOUNT);
+		mListingAccount = restoredAccount == null
+				? accounts.getDefaultAccount() : accounts.getAccount(restoredAccount);
 
 		mPostListingManager = new PostListingManager(parent);
 
@@ -259,6 +269,12 @@ public class PostListingFragment extends RRFragment
 
 		General.setLayoutMatchParent(mRecyclerView);
 
+		if(!hasListingAccount()) {
+			// A removed account must never turn a restored /me/ listing into another account's.
+			parent.finish();
+			return;
+		}
+
 		final DownloadStrategy downloadStrategy;
 
 		if(forceDownload) {
@@ -279,7 +295,7 @@ public class PostListingFragment extends RRFragment
 
 		mRequest = createPostListingRequest(
 				UriString.from(mPostListingURL.generateJsonUri()),
-				RedditAccountManager.getInstance(context).getDefaultAccount(),
+				mListingAccount,
 				session,
 				downloadStrategy,
 				true);
@@ -416,6 +432,9 @@ public class PostListingFragment extends RRFragment
 	public Bundle onSaveInstanceState() {
 
 		final Bundle bundle = new Bundle();
+		if(mListingAccount != null) {
+			bundle.putString(SAVEDSTATE_ACCOUNT, mListingAccount.username);
+		}
 
 		final LinearLayoutManager layoutManager
 				= (LinearLayoutManager)mRecyclerView.getLayoutManager();
@@ -502,6 +521,13 @@ public class PostListingFragment extends RRFragment
 				subreddit);
 
 		setHeader(postListingHeader);
+		MultiredditActionMenus.attachToHeader(
+				getActivity(), mListingAccount, mPostListingURL, postListingHeader, () -> {
+					if(hasListingAccount() && mOuter.isAttachedToWindow()) {
+						((OptionsMenuUtility.OptionsMenuPostsListener)getActivity())
+								.onRefreshPosts();
+					}
+				});
 
 		if(subreddit != null) {
 			postListingHeader.setOnLongClickListener(view -> {
@@ -599,6 +625,9 @@ public class PostListingFragment extends RRFragment
 	private void onLoadMoreItemsCheck() {
 
 		General.checkThisIsUIThread();
+		if(!hasListingAccount()) {
+			return;
+		}
 
 		if(mReadyToDownloadMore && mAfter != null && !mAfter.equals(mLastAfter)) {
 
@@ -625,8 +654,7 @@ public class PostListingFragment extends RRFragment
 
 				mRequest = createPostListingRequest(
 						UriString.from(newUri),
-						RedditAccountManager.getInstance(getActivity())
-								.getDefaultAccount(),
+						mListingAccount,
 						mSession,
 						strategy,
 						false);
@@ -650,6 +678,11 @@ public class PostListingFragment extends RRFragment
 				}
 			}
 		}
+	}
+
+	private boolean hasListingAccount() {
+		return mListingAccount != null
+				&& MultiredditActionMenus.isAccountAvailable(getContext(), mListingAccount);
 	}
 
 	public void onSubscribe() {
@@ -966,6 +999,7 @@ public class PostListingFragment extends RRFragment
 
 									final RedditPreparedPost preparedPost = new RedditPreparedPost(
 											activity,
+											user,
 											cm,
 											positionInList,
 											parsedPost,
@@ -983,7 +1017,8 @@ public class PostListingFragment extends RRFragment
 									}
 
 									if(precacheComments) {
-										precacheComments(activity, preparedPost, positionInList);
+										precacheComments(
+												activity, user, preparedPost, positionInList);
 									}
 
 									LinkHandler.getImageInfo(
@@ -1118,6 +1153,7 @@ public class PostListingFragment extends RRFragment
 
 	private void precacheComments(
 			final Activity activity,
+			@NonNull final RedditAccount user,
 			@NonNull final RedditPreparedPost preparedPost,
 			final int positionInList) {
 
@@ -1129,7 +1165,7 @@ public class PostListingFragment extends RRFragment
 		CacheManager.getInstance(activity)
 				.makeRequest(CacheRequest.newPrecacheRequest(
 						url,
-						RedditAccountManager.getInstance(activity).getDefaultAccount(),
+						user,
 						new Priority(
 								Constants.Priority.COMMENT_PRECACHE,
 							positionInList),

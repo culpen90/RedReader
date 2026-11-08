@@ -50,12 +50,16 @@ import org.quantumbadger.redreader.common.ScreenreaderPronunciation;
 import org.quantumbadger.redreader.common.SharedPrefsWrapper;
 import org.quantumbadger.redreader.common.UriString;
 import org.quantumbadger.redreader.fragments.MainMenuFragment;
+import org.quantumbadger.redreader.fragments.AddToMultiredditDialog;
+import org.quantumbadger.redreader.reddit.api.MultiredditApi;
 import org.quantumbadger.redreader.receivers.announcements.Announcement;
 import org.quantumbadger.redreader.receivers.announcements.AnnouncementDownloader;
 import org.quantumbadger.redreader.reddit.api.RedditSubredditSubscriptionManager;
 import org.quantumbadger.redreader.reddit.api.SubredditSubscriptionState;
 import org.quantumbadger.redreader.reddit.things.SubredditCanonicalId;
 import org.quantumbadger.redreader.reddit.url.MultiredditPostListURL;
+import org.quantumbadger.redreader.reddit.api.MultiredditActionMenus;
+import org.quantumbadger.redreader.reddit.api.MultiredditTarget;
 import org.quantumbadger.redreader.reddit.url.PostListingURL;
 import org.quantumbadger.redreader.reddit.url.SubredditPostListURL;
 import org.quantumbadger.redreader.views.AnnouncementView;
@@ -95,6 +99,8 @@ public class MainMenuListingManager {
 	@NonNull private final Context mContext;
 	@NonNull private final AppCompatActivity mActivity;
 
+	@NonNull private final RedditAccount mUser;
+
 	@NonNull private final MainMenuSelectionListener mListener;
 
 	@Nullable private GroupedRecyclerViewAdapter.Item mMultiredditHeaderItem;
@@ -118,7 +124,8 @@ public class MainMenuListingManager {
 		UNPIN(R.string.unpin_subreddit),
 		SUBSCRIBE(R.string.options_subscribe),
 		UNSUBSCRIBE(R.string.options_unsubscribe),
-		EXTERNAL(R.string.action_external);
+		EXTERNAL(R.string.action_external),
+		ADD_TO_MULTIREDDIT(R.string.action_add_to_multireddit);
 
 		public final int descriptionResId;
 
@@ -135,6 +142,7 @@ public class MainMenuListingManager {
 		General.checkThisIsUIThread();
 
 		mActivity = activity;
+		mUser = user;
 		mContext = activity.getApplicationContext();
 		mListener = listener;
 
@@ -730,6 +738,8 @@ public class MainMenuListingManager {
 			return;
 		}
 
+		final RedditAccount capturedAccount = RedditAccountManager.getInstance(activity)
+				.getDefaultAccount();
 		final ArrayList<SubredditMenuItem> menu = new ArrayList<>();
 		if(itemPref.contains(SubredditAction.COPY_URL)) {
 			menu.add(new SubredditMenuItem(
@@ -814,6 +824,13 @@ public class MainMenuListingManager {
 			}
 		}
 
+		if(!capturedAccount.isAnonymous()
+				&& itemPref.contains(SubredditAction.ADD_TO_MULTIREDDIT)
+				&& MultiredditApi.canAddSubreddit(subreddit)) {
+			menu.add(new SubredditMenuItem(activity, R.string.action_add_to_multireddit,
+					SubredditAction.ADD_TO_MULTIREDDIT));
+		}
+
 		final String[] menuText = new String[menu.size()];
 
 		for(int i = 0; i < menuText.length; i++) {
@@ -822,10 +839,13 @@ public class MainMenuListingManager {
 
 		final MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(activity);
 
-		builder.setItems(menuText, (dialog, which) -> onSubredditActionMenuItemSelected(
-				subreddit,
-				activity,
-				menu.get(which).action));
+		builder.setItems(menuText, (dialog, which) -> {
+			if(menu.get(which).action == SubredditAction.ADD_TO_MULTIREDDIT) {
+				AddToMultiredditDialog.show(activity, capturedAccount, subreddit);
+			} else {
+				onSubredditActionMenuItemSelected(subreddit, activity, menu.get(which).action);
+			}
+		});
 
 		final AlertDialog alert = builder.create();
 		alert.setCanceledOnTouchOutside(true);
@@ -941,7 +961,8 @@ public class MainMenuListingManager {
 			final boolean hideDivider) {
 
 		final View.OnClickListener clickListener = view -> mListener.onSelected(
-				(PostListingURL)MultiredditPostListURL.getMultireddit(name));
+				(PostListingURL)MultiredditPostListURL.getMultireddit(
+						mUser.canonicalUsername, name));
 
 		return new GroupedRecyclerViewItemListItemView(
 				null,
@@ -949,7 +970,17 @@ public class MainMenuListingManager {
 				ScreenreaderPronunciation.getPronunciation(mContext, name),
 				hideDivider,
 				clickListener,
-				null,
+				view -> {
+					if(!mUser.isAnonymous()) {
+						try {
+							MultiredditActionMenus.showMultireddit(mActivity, mUser,
+									MultiredditTarget.forName(mUser, name), null);
+						} catch(final IllegalArgumentException invalid) {
+							General.quickToast(mActivity, R.string.multireddit_invalid_name);
+						}
+					}
+					return true;
+				},
 				Optional.empty(),
 				Optional.empty(),
 				Optional.empty());

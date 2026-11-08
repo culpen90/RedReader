@@ -2103,4 +2103,51 @@
 	<string name="inline_media_description_gif">GIF</string>
 	<!-- Translators: very short label shown on top of animated images in comments -->
 	<string name="inline_media_gif_badge">GIF</string>
+	<string name="api_action_failed_title">Action failed</string>
+	<string name="api_action_failed_message">Reddit reported an error: %1$s</string>
+	<string name="api_action_invalid_response">Reddit returned an invalid response. Try again.</string>
+	<string name="create_multireddit">Create multireddit</string>
+	<string name="multireddit_name_hint">Name (letters, numbers and underscores)</string>
+	<plurals name="multireddit_create_description">
+		<item quantity="one">Create a private multireddit for %1$s with %2$d subreddit.</item>
+		<item quantity="other">Create a private multireddit for %1$s with %2$d subreddits.</item>
+	</plurals>
+	<string name="multireddit_sign_in_required">Sign in to create or edit a multireddit.</string>
+	<string name="multireddit_invalid_name">Use 1–50 letters, numbers or underscores.</string>
+	<string name="multireddit_invalid_members">Choose between 1 and 100 ordinary subreddits.</string>
+	<string name="multireddit_created">Created %1$s</string>
+	<string name="multireddit_action_failed">The multireddit action failed. Try again.</string>
+	<string name="pref_menus_subreddit_combinations_header">Combined subreddits</string>
+	<string name="pref_menus_subreddit_combinations_context_items_key" translatable="false">pref_menus_subreddit_combinations_context_items</string>
+	<string name="pref_menus_subreddit_combinations_context_items_title">Action menu items</string>
+	<string name="multireddit_single_subreddit_required">Choose one subreddit to add.</string>
+	<string name="multireddit_choose_name">Choose a multireddit</string>
+	<string name="multireddit_add_title">Add r/%1$s to a multireddit of %2$s</string>
+	<string name="multireddit_add_button">Add</string>
+	<string name="multireddit_retry">Retry</string>
+	<string name="multireddit_loading_names">Loading your multireddits…</string>
+	<string name="multireddit_no_owned_names">Create a multireddit before adding subreddits.</string>
+	<string name="multireddit_names_failed">Unable to load your multireddits. Retry to continue.</string>
+	<string name="multireddit_select_owned_name">Select one of your multireddits.</string>
+	<string name="multireddit_adding">Adding subreddit…</string>
+	<string name="multireddit_added">Added r/%1$s to %2$s</string>
+	<string name="multireddit_add_failed">Unable to add subreddit. Check the name and retry.</string>
+	<string name="action_add_to_multireddit">Add to multireddit</string>
+	<string name="delete_multireddit">Delete multireddit</string>
+	<string name="multireddit_delete_confirmation">Delete %1$s? This removes the multireddit and its list of subreddits.</string>
+	<string name="multireddit_deleted">Deleted %1$s</string>
+	<string name="multireddit_not_owned">Only multireddits owned by this account can be edited.</string>
+	<string name="pref_menus_multireddits_header">Multireddits</string>
+	<string name="pref_menus_multireddits_context_items_key" translatable="false">pref_menus_multireddit_context_items</string>
+	<string name="pref_menus_multireddits_context_items_title">Action menu items</string>
+	<string name="remove_subreddit_from_multireddit">Remove subreddit from multireddit</string>
+	<string name="multireddit_remove_button">Remove</string>
+	<string name="multireddit_members_retry">Reload members</string>
+	<string name="multireddit_choose_member">Choose a current subreddit</string>
+	<string name="multireddit_loading_members">Loading current subreddits…</string>
+	<string name="multireddit_no_members">This multireddit has no subreddits to remove.</string>
+	<string name="multireddit_select_member">Select one of the current subreddits.</string>
+	<string name="multireddit_members_failed">Unable to load or update this multireddit. Reload members to retry.</string>
+	<string name="multireddit_removing">Removing subreddit…</string>
+	<string name="multireddit_removed">Removed r/%1$s from %2$s</string>
 </resources>
