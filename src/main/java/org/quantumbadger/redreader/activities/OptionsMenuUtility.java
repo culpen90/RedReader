@@ -45,6 +45,7 @@ import org.quantumbadger.redreader.reddit.PostCommentSort;
 import org.quantumbadger.redreader.reddit.PostSort;
 import org.quantumbadger.redreader.reddit.UserCommentSort;
 import org.quantumbadger.redreader.reddit.api.SubredditSubscriptionState;
+import org.quantumbadger.redreader.reddit.prepared.PostMediaType;
 import org.quantumbadger.redreader.settings.SettingsActivity;
 import org.quantumbadger.redreader.settings.types.AppearanceTheme;
 
@@ -116,6 +117,10 @@ public final class OptionsMenuUtility {
 			final boolean pastCommentsSupported,
 			final Boolean subredditPinned,
 			final Boolean subredditBlocked) {
+
+		if(postsVisible) {
+			addMediaTypeSubMenu(activity, menu);
+		}
 
 		final EnumMap<AppbarItemsPref, Integer> appbarItemsPrefs
 				= PrefsUtility.pref_menus_appbar_items();
@@ -1177,6 +1182,25 @@ public final class OptionsMenuUtility {
 		addSortsToNewSubmenu(activity, sortPosts, TOP_SORTS);
 
 		sortPosts.setGroupCheckable(Menu.NONE, true, true);
+
+	}
+
+	private static void addMediaTypeSubMenu(final AppCompatActivity activity, final Menu menu) {
+
+		// Keep filters available for searches, saved posts and layouts where sorting is hidden.
+		final SubMenu mediaMenu = menu.addSubMenu(R.string.options_media_type);
+		mediaMenu.getItem().setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
+
+		for(final PostMediaType type : PostMediaType.values()) {
+			mediaMenu.add(type.getTitleRes())
+					.setCheckable(true)
+					.setChecked(PrefsUtility.pref_media_type(type))
+					.setOnMenuItemClickListener(item -> {
+						item.setChecked(!item.isChecked());
+						PrefsUtility.pref_media_type_set(type, item.isChecked());
+						return true;
+					});
+		}
 	}
 
 	private static void addAllSearchSorts(
