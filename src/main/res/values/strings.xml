@@ -2147,4 +2147,5 @@
 	<string name="multireddit_members_failed">Unable to load or update this multireddit. Reload members to retry.</string>
 	<string name="multireddit_removing">Removing subreddit…</string>
 	<string name="multireddit_removed">Removed r/%1$s from %2$s</string>
+	<string name="mark_inbox_as_read_when_back">Mark viewed messages read when leaving</string>
 </resources>

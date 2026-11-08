@@ -33,7 +33,7 @@ import androidx.annotation.Nullable;
 import com.google.android.material.button.MaterialButton;
 
 import org.quantumbadger.redreader.R;
-import org.quantumbadger.redreader.account.RedditAccountManager;
+import org.quantumbadger.redreader.account.RedditAccount;
 import org.quantumbadger.redreader.activities.BaseActivity;
 import org.quantumbadger.redreader.activities.BugReportActivity;
 import org.quantumbadger.redreader.cache.CacheManager;
@@ -62,6 +62,7 @@ public class RedditInboxItemView extends FrameLayout {
 	private static final int READ_STATUS_ANIM_DURATION_MS = 200;
 
 	private final BaseActivity mActivity;
+	private final RedditAccount mUser;
 	private final RRThemeAttributes mTheme;
 	private final boolean mShowLinkButtons;
 	private final boolean mCollapseLongMessages;
@@ -94,6 +95,7 @@ public class RedditInboxItemView extends FrameLayout {
 
 	public RedditInboxItemView(
 			final BaseActivity activity,
+			final RedditAccount user,
 			final RRThemeAttributes theme,
 			final boolean allowMarkRead,
 			final Set<RedditIdAndType> expandedItems) {
@@ -101,6 +103,7 @@ public class RedditInboxItemView extends FrameLayout {
 		super(activity);
 
 		mActivity = activity;
+		mUser = user;
 		mTheme = theme;
 		mAllowMarkRead = allowMarkRead;
 		mExpandedItems = expandedItems;
@@ -386,7 +389,7 @@ public class RedditInboxItemView extends FrameLayout {
 						BugReportActivity.handleGlobalError(mActivity, t);
 					}
 				},
-				RedditAccountManager.getInstance(mActivity).getDefaultAccount(),
+				mUser,
 				id,
 				mActivity);
 	}

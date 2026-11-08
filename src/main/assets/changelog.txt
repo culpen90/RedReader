@@ -1,4 +1,5 @@
 120/1.28
+Option to mark viewed messages read when leaving the inbox (thanks to folkemat)
 Option to set the navigation bar opacity
 Option to show images and GIFs inline in comments, including GIFs from Giphy (Settings > Images/Video)
 Fixed issue where post titles are cut off
