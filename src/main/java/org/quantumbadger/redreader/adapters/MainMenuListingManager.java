@@ -45,6 +45,7 @@ import org.quantumbadger.redreader.common.General;
 import org.quantumbadger.redreader.common.LinkHandler;
 import org.quantumbadger.redreader.common.Optional;
 import org.quantumbadger.redreader.common.PrefsUtility;
+import org.quantumbadger.redreader.common.PinnedSubredditFeed;
 import org.quantumbadger.redreader.common.ScreenreaderPronunciation;
 import org.quantumbadger.redreader.common.SharedPrefsWrapper;
 import org.quantumbadger.redreader.common.UriString;
@@ -218,8 +219,8 @@ public class MainMenuListingManager {
 								false));
 			}
 
-			if(mainMenuShortcutItems.contains(MainMenuFragment.MainMenuShortcutItems.PINNED) &&
-					!PrefsUtility.pref_pinned_subreddits_is_empty()) {
+			if(mainMenuShortcutItems.contains(MainMenuFragment.MainMenuShortcutItems.PINNED)
+					&& !PinnedSubredditFeed.from(PrefsUtility.pref_pinned_subreddits()).isEmpty()) {
 				mAdapter.appendToGroup(
 						GROUP_MAIN_ITEMS,
 						makeItem(
@@ -467,16 +468,24 @@ public class MainMenuListingManager {
 	private void setPinnedSubreddits() {
 
 		final List<SubredditCanonicalId> pinnedSubreddits
-				= PrefsUtility.pref_pinned_subreddits(true);
+				= PrefsUtility.pref_pinned_subreddits();
 
 		mAdapter.removeAllFromGroup(GROUP_PINNED_SUBREDDITS_ITEMS);
 		mAdapter.removeAllFromGroup(GROUP_PINNED_SUBREDDITS_HEADER);
 
 		if(!pinnedSubreddits.isEmpty()) {
+
+			final PrefsUtility.PinnedSubredditSort pinnedSubredditsSort
+					= PrefsUtility.pref_behaviour_pinned_subredditsort();
+
 			mAdapter.appendToGroup(
 					GROUP_PINNED_SUBREDDITS_HEADER,
 					new GroupedRecyclerViewItemListSectionHeaderView(
 							mActivity.getString(R.string.mainmenu_header_subreddits_pinned)));
+
+			if(pinnedSubredditsSort == PrefsUtility.PinnedSubredditSort.NAME) {
+				Collections.sort(pinnedSubreddits);
+			}
 
 			boolean isFirst = true;
 

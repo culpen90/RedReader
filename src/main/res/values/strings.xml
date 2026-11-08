@@ -2018,4 +2018,7 @@
 
   <string name="pref_behaviour_skiptopinned_title">Skip to pinned subreddits</string>
   <string name="pref_behaviour_skiptopinned_key" translatable="false">pref_behaviour_skiptopinned</string>
+	<string name="pinned_feed_empty">Pin a subreddit to open a combined pinned feed. Profile pins are excluded.</string>
+	<string name="pinned_feed_too_large">The pinned feed is too large to open. Reduce it to at most 100 subreddits and 1,500 characters.</string>
+	<string name="pref_behaviour_skiptopinned_summary">Open a combined feed of pinned subreddits at startup. Profile and special feed pins are excluded.</string>
 </resources>
