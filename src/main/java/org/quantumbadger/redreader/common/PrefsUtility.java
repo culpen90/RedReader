@@ -270,8 +270,8 @@ public final class PrefsUtility {
 	public static AppearanceTheme appearance_theme(@Nullable final Resources resources) {
 		if(resources != null && appearance_theme_use_system()) {
 			final int uiMode = resources.getConfiguration().uiMode
-					& android.content.res.Configuration.UI_MODE_NIGHT_MASK;
-			if(uiMode == android.content.res.Configuration.UI_MODE_NIGHT_YES) {
+					& Configuration.UI_MODE_NIGHT_MASK;
+			if(uiMode == Configuration.UI_MODE_NIGHT_YES) {
 				return appearance_theme_dark();
 			} else {
 				return appearance_theme_light();
