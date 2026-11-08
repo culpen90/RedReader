@@ -105,6 +105,7 @@ class PostLayoutTest {
 	private fun post(id: String = "abcd", enabled: Boolean = true): RedditPost = RedditPost(
 		id = id, name = RedditIdAndType("t3_" + id),
 		url = UrlEncodedString("https://example.invalid/image.jpg"),
+		author = UrlEncodedString("example_author"),
 		title = UrlEncodedString("Post " + id), domain = UrlEncodedString("example.invalid"),
 		subreddit = UrlEncodedString("test"), num_comments = 3, score = 1,
 		created_utc = RedditTimestampUTC(TimestampUTC.fromUtcSecs(0)),
@@ -349,6 +350,7 @@ class PostLayoutTest {
 	@Test
 	fun previewHolderBoundsTallImagesInsideATabletPane() = withActivity { activity ->
 		val list = RecyclerView(activity)
+		list.layoutManager = LinearLayoutManager(activity)
 		list.layout(0, 0, 400, 300)
 		val holder = InlinePreviewHolderView(activity)
 		list.addView(holder)
