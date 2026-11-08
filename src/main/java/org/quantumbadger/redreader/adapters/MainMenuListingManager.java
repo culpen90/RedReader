@@ -58,6 +58,8 @@ import org.quantumbadger.redreader.reddit.api.RedditSubredditSubscriptionManager
 import org.quantumbadger.redreader.reddit.api.SubredditSubscriptionState;
 import org.quantumbadger.redreader.reddit.things.SubredditCanonicalId;
 import org.quantumbadger.redreader.reddit.url.MultiredditPostListURL;
+import org.quantumbadger.redreader.reddit.api.MultiredditActionMenus;
+import org.quantumbadger.redreader.reddit.api.MultiredditTarget;
 import org.quantumbadger.redreader.reddit.url.PostListingURL;
 import org.quantumbadger.redreader.reddit.url.SubredditPostListURL;
 import org.quantumbadger.redreader.views.AnnouncementView;
@@ -96,6 +98,8 @@ public class MainMenuListingManager {
 			= new GroupedRecyclerViewAdapter(13);
 	@NonNull private final Context mContext;
 	@NonNull private final AppCompatActivity mActivity;
+
+	@NonNull private final RedditAccount mUser;
 
 	@NonNull private final MainMenuSelectionListener mListener;
 
@@ -138,6 +142,7 @@ public class MainMenuListingManager {
 		General.checkThisIsUIThread();
 
 		mActivity = activity;
+		mUser = user;
 		mContext = activity.getApplicationContext();
 		mListener = listener;
 
@@ -964,7 +969,17 @@ public class MainMenuListingManager {
 				ScreenreaderPronunciation.getPronunciation(mContext, name),
 				hideDivider,
 				clickListener,
-				null,
+				view -> {
+					if(!mUser.isAnonymous()) {
+						try {
+							MultiredditActionMenus.showMultireddit(mActivity, mUser,
+									MultiredditTarget.forName(mUser, name), null);
+						} catch(final IllegalArgumentException invalid) {
+							General.quickToast(mActivity, R.string.multireddit_invalid_name);
+						}
+					}
+					return true;
+				},
 				Optional.empty(),
 				Optional.empty(),
 				Optional.empty());

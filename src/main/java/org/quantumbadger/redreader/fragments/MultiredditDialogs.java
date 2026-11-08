@@ -61,11 +61,20 @@ public final class MultiredditDialogs {
 	}
 
 	interface Backend {
-		Pending create(
+		default Pending create(
 				RedditAccount account,
 				MultiredditTarget target,
 				Collection<SubredditCanonicalId> subreddits,
-				MultiredditApi.ActionListener listener);
+				MultiredditApi.ActionListener listener) {
+			throw new UnsupportedOperationException();
+		}
+
+		default Pending delete(
+				RedditAccount account,
+				MultiredditTarget target,
+				MultiredditApi.ActionListener listener) {
+			throw new UnsupportedOperationException();
+		}
 	}
 
 	private static final class ApiBackend implements Backend {
@@ -73,6 +82,29 @@ public final class MultiredditDialogs {
 
 		private ApiBackend(final Context context) {
 			mContext = context.getApplicationContext();
+		}
+
+		@Override
+		public Pending delete(
+				final RedditAccount account,
+				final MultiredditTarget target,
+				final MultiredditApi.ActionListener listener) {
+			final CacheRequest request = MultiredditApi.newDeleteRequest(
+					mContext, account, target, new MultiredditApi.ActionListener() {
+						@Override
+						public void onSuccess() {
+							RedditMultiredditSubscriptionManager.getSingleton(mContext, account)
+									.triggerUpdate(null, TimestampBound.NONE);
+							listener.onSuccess();
+						}
+
+						@Override
+						public void onFailure(@NonNull final RRError error) {
+							listener.onFailure(error);
+						}
+					});
+			CacheManager.getInstance(mContext).makeRequest(request);
+			return request::cancel;
 		}
 
 		@Override
@@ -186,9 +218,86 @@ public final class MultiredditDialogs {
 			session.attach();
 			dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> submit.run());
 		});
-		input.setOnEditorActionListener((view, action, event) -> handleEditor(action, event, submit));
+		input.setOnEditorActionListener(
+				(view, action, event) -> handleEditor(action, event, submit));
 		dialog.show();
 		return dialog;
+	}
+
+	@NonNull
+	public static AlertDialog showDelete(
+			final AppCompatActivity activity,
+			final RedditAccount account,
+			final MultiredditTarget target,
+			@Nullable final Runnable onDeleted) {
+		return showDelete(activity, account, target, onDeleted, new ApiBackend(activity));
+	}
+
+	static AlertDialog showDelete(
+			final AppCompatActivity activity,
+			final RedditAccount account,
+			final MultiredditTarget target,
+			@Nullable final Runnable onDeleted,
+			final Backend backend) {
+		if(!target.isOwnedBy(account)) {
+			return notOwned(activity, target);
+		}
+		final TextView error = new TextView(activity);
+		error.setVisibility(View.GONE);
+		error.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
+		final LinearLayout contents = contents(activity);
+		final TextView description = new TextView(activity);
+		description.setText(activity.getString(
+				R.string.multireddit_delete_confirmation, target.getDisplayPath()));
+		contents.addView(description);
+		contents.addView(error);
+		final AlertDialog dialog = new MaterialAlertDialogBuilder(activity)
+				.setTitle(R.string.delete_multireddit)
+				.setView(contents)
+				.setPositiveButton(R.string.delete_multireddit, null)
+				.setNegativeButton(android.R.string.cancel, null)
+				.create();
+		final Session session = new Session(activity, dialog, null, error);
+		dialog.setOnShowListener(shown -> {
+			session.attach();
+			dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
+				if(session.isWorking() || !session.isUsable()) {
+					return;
+				}
+				final int generation = session.begin();
+				session.setPending(generation, backend.delete(account, target,
+						new MultiredditApi.ActionListener() {
+							@Override
+							public void onSuccess() {
+								if(session.accepts(generation)) {
+									General.quickToast(activity, activity.getString(
+											R.string.multireddit_deleted, target.getDisplayPath()));
+									dialog.dismiss();
+									if(onDeleted != null) {
+										onDeleted.run();
+									}
+								}
+							}
+
+							@Override
+							public void onFailure(@NonNull final RRError failure) {
+								session.fail(generation, failure);
+							}
+						}));
+			});
+		});
+		dialog.show();
+		return dialog;
+	}
+
+	private static AlertDialog notOwned(
+			final AppCompatActivity activity,
+			final MultiredditTarget target) {
+		return new MaterialAlertDialogBuilder(activity)
+				.setTitle(target.getDisplayPath())
+				.setMessage(R.string.multireddit_not_owned)
+				.setNegativeButton(android.R.string.ok, null)
+				.show();
 	}
 
 	static boolean handleEditor(
@@ -219,7 +328,7 @@ public final class MultiredditDialogs {
 	private static final class Session implements DefaultLifecycleObserver {
 		private final AppCompatActivity mActivity;
 		private final AlertDialog mDialog;
-		private final EditText mInput;
+		@Nullable private final EditText mInput;
 		private final TextView mError;
 		private boolean mAttached;
 		private boolean mWorking;
@@ -229,7 +338,7 @@ public final class MultiredditDialogs {
 		private Session(
 				final AppCompatActivity activity,
 				final AlertDialog dialog,
-				final EditText input,
+				@Nullable final EditText input,
 				final TextView error) {
 			mActivity = activity;
 			mDialog = dialog;
@@ -271,8 +380,10 @@ public final class MultiredditDialogs {
 
 		private int begin() {
 			mWorking = true;
-			mInput.setError(null);
-			mInput.setEnabled(false);
+			if(mInput != null) {
+				mInput.setError(null);
+				mInput.setEnabled(false);
+			}
 			mError.setVisibility(View.GONE);
 			mDialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
 			return ++mGeneration;
@@ -301,7 +412,9 @@ public final class MultiredditDialogs {
 			}
 			mPending = null;
 			mWorking = false;
-			mInput.setEnabled(true);
+			if(mInput != null) {
+				mInput.setEnabled(true);
+			}
 			mDialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true);
 			mError.setText(error.message != null
 					? error.message : mActivity.getString(R.string.multireddit_action_failed));

@@ -2130,4 +2130,11 @@
 	<string name="multireddit_added">Added r/%1$s to %2$s</string>
 	<string name="multireddit_add_failed">Unable to add subreddit. Check the name and retry.</string>
 	<string name="action_add_to_multireddit">Add to multireddit</string>
+	<string name="delete_multireddit">Delete multireddit</string>
+	<string name="multireddit_delete_confirmation">Delete %1$s? This removes the multireddit and its list of subreddits.</string>
+	<string name="multireddit_deleted">Deleted %1$s</string>
+	<string name="multireddit_not_owned">Only multireddits owned by this account can be edited.</string>
+	<string name="pref_menus_multireddits_header">Multireddits</string>
+	<string name="pref_menus_multireddits_context_items_key" translatable="false">pref_menus_multireddit_context_items</string>
+	<string name="pref_menus_multireddits_context_items_title">Action menu items</string>
 </resources>

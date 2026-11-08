@@ -28,6 +28,9 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import org.quantumbadger.redreader.R;
 import org.quantumbadger.redreader.account.RedditAccount;
 import org.quantumbadger.redreader.common.General;
+import org.quantumbadger.redreader.common.Constants;
+import org.quantumbadger.redreader.common.LinkHandler;
+import org.quantumbadger.redreader.reddit.url.MultiredditPostListURL;
 import org.quantumbadger.redreader.common.PrefsUtility;
 import org.quantumbadger.redreader.fragments.MultiredditDialogs;
 import org.quantumbadger.redreader.reddit.things.InvalidSubredditNameException;
@@ -58,6 +61,22 @@ public final class MultiredditActionMenus {
 				return true;
 			});
 		}
+		if(url instanceof MultiredditPostListURL && !account.isAnonymous()) {
+			final MultiredditTarget target;
+			try {
+				target = MultiredditTarget.fromListing(account, (MultiredditPostListURL)url);
+			} catch(final IllegalArgumentException invalid) {
+				return;
+			}
+			if(target.isOwnedBy(account)) {
+				header.setOnLongClickListener(view -> {
+					showMultireddit(activity, account, target,
+							() -> LinkHandler.onLinkClicked(
+									activity, Constants.Reddit.getNonAPIUri("/")));
+					return true;
+				});
+			}
+		}
 	}
 
 	@Nullable
@@ -81,7 +100,35 @@ public final class MultiredditActionMenus {
 		return new MaterialAlertDialogBuilder(activity)
 				.setTitle(url.humanReadableName(activity, true))
 				.setItems(new String[] { activity.getString(R.string.create_multireddit) },
-						(dialog, item) -> MultiredditDialogs.showCreate(activity, account, subreddits))
+						(dialog, item) -> MultiredditDialogs.showCreate(
+								activity, account, subreddits))
+				.show();
+	}
+
+	@Nullable
+	public static AlertDialog showMultireddit(
+			final AppCompatActivity activity,
+			final RedditAccount account,
+			final MultiredditTarget target,
+			@Nullable final Runnable onDeleted) {
+		if(!target.isOwnedBy(account)) {
+			return null;
+		}
+		final ArrayList<String> titles = new ArrayList<>();
+		final ArrayList<Runnable> actions = new ArrayList<>();
+		if(PrefsUtility.getStringSet(
+				R.string.pref_menus_multireddits_context_items_key,
+				R.array.pref_menus_multireddits_context_items_return)
+				.contains("delete_multireddit")) {
+			titles.add(activity.getString(R.string.delete_multireddit));
+			actions.add(() -> MultiredditDialogs.showDelete(activity, account, target, onDeleted));
+		}
+		if(actions.isEmpty()) {
+			return null;
+		}
+		return new MaterialAlertDialogBuilder(activity)
+				.setTitle(target.getDisplayPath())
+				.setItems(titles.toArray(new String[0]), (dialog, item) -> actions.get(item).run())
 				.show();
 	}
 
