@@ -23,10 +23,12 @@ import android.graphics.Bitmap;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.os.SystemClock;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -47,13 +49,14 @@ import org.quantumbadger.redreader.reddit.api.RedditPostActions;
 import org.quantumbadger.redreader.reddit.prepared.InlinePreviewLoader;
 import org.quantumbadger.redreader.reddit.prepared.RedditPreparedPost;
 import org.quantumbadger.redreader.views.liststatus.ErrorView;
+import org.quantumbadger.redreader.settings.types.PostLayout;
 
 import java.util.ArrayList;
 import java.util.Objects;
 
 public final class RedditPostView extends FlingableItemView
 		implements RedditPreparedPost.ThumbnailLoadedCallback,
-		InlinePreviewLoader.Listener {
+		InlinePreviewLoader.Listener, ViewTreeObserver.OnPreDrawListener {
 
 	private final AccessibilityActionManager mAccessibilityActionManager;
 
@@ -95,6 +98,7 @@ public final class RedditPostView extends FlingableItemView
 	private final int rrPostTitleCol;
 
 	private final int mThumbnailSizePrefPixels;
+	private long mNextPreviewPolicyCheck;
 
 	@Override
 	protected void onSetItemFlingPosition(final float position) {
@@ -184,7 +188,11 @@ public final class RedditPostView extends FlingableItemView
 		final float subtitleFontScale = PrefsUtility.appearance_fontscale_post_subtitles();
 
 		final View rootView =
-				LayoutInflater.from(context).inflate(R.layout.reddit_post, this, true);
+				LayoutInflater.from(context).inflate(
+						PrefsUtility.post_layout() == PostLayout.CARD
+								? R.layout.reddit_post_card : R.layout.reddit_post,
+						this,
+						true);
 
 		mOuterView = Objects.requireNonNull(rootView.findViewById(R.id.reddit_post_layout_outer));
 		mInnerView = Objects.requireNonNull(rootView.findViewById(R.id.reddit_post_layout_inner));
@@ -327,7 +335,7 @@ public final class RedditPostView extends FlingableItemView
 		if(isNewPost) {
 
 			if(mPreviewLoader != null) {
-				mPreviewLoader.setListener(null);
+				mPreviewLoader.removeListener(this);
 				mPreviewLoader = null;
 			}
 
@@ -486,6 +494,7 @@ public final class RedditPostView extends FlingableItemView
 	@Override
 	protected void onAttachedToWindow() {
 		super.onAttachedToWindow();
+		getViewTreeObserver().addOnPreDrawListener(this);
 
 		if(mPreviewLoader != null) {
 			mPreviewLoader.setListener(this);
@@ -494,13 +503,29 @@ public final class RedditPostView extends FlingableItemView
 
 	@Override
 	protected void onDetachedFromWindow() {
+		final ViewTreeObserver observer = getViewTreeObserver();
+		if(observer.isAlive()) {
+			observer.removeOnPreDrawListener(this);
+		}
 		super.onDetachedFromWindow();
+		mImagePreviewImageView.setImageDrawable(null);
+		mImagePreviewLoadingSpinner.setVisibility(GONE);
 
 		// While this view is recycled it has no claim on the preview, which allows the
 		// preview to be released if the post is also outside the preload window
 		if(mPreviewLoader != null) {
-			mPreviewLoader.setListener(null);
+			mPreviewLoader.removeListener(this);
 		}
+	}
+
+	@Override
+	public boolean onPreDraw() {
+		final long now = SystemClock.uptimeMillis();
+		if(mPreviewLoader != null && now >= mNextPreviewPolicyCheck) {
+			mNextPreviewPolicyCheck = now + 1000;
+			mPreviewLoader.refresh();
+		}
+		return true;
 	}
 
 	private void attachInlinePreview(@NonNull final RedditPreparedPost post) {
@@ -572,6 +597,13 @@ public final class RedditPostView extends FlingableItemView
 				break;
 
 			case NOT_LOADED:
+				mImagePreviewImageView.setImageBitmap(null);
+				mImagePreviewPlayOverlay.setVisibility(GONE);
+				mImagePreviewLoadingSpinner.setVisibility(GONE);
+				mImagePreviewOuter.setVisibility(GONE);
+				setBottomMargin(false);
+				break;
+
 			case LOADING:
 			default:
 

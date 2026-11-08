@@ -249,6 +249,18 @@ public class PostListingFragment extends RRFragment
 		mRecyclerView.setAdapter(mPostListingManager.getAdapter());
 
 		mOuter = recyclerViewManager.getOuterView();
+		mPostListingManager.setPreloadEnabled(false);
+		mOuter.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
+			@Override
+			public void onViewAttachedToWindow(@NonNull final View view) {
+				mPostListingManager.setPreloadEnabled(true);
+			}
+
+			@Override
+			public void onViewDetachedFromWindow(@NonNull final View view) {
+				mPostListingManager.setPreloadEnabled(false);
+			}
+		});
 
 		mRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
 			@Override

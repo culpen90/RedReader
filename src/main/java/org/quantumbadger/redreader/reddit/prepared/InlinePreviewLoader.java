@@ -129,7 +129,8 @@ public final class InlinePreviewLoader {
 	 * that a post never takes up so much of the list that it is hard to scroll past.
 	 */
 	public static int getMaxPreviewHeightPx(final int displayAreaHeightPx) {
-		return Math.max(1, (Math.max(400, displayAreaHeightPx) * 7) / 8);
+		return displayAreaHeightPx > 0
+				? Math.max(1, (int)(((long)displayAreaHeightPx * 7) / 8)) : 350;
 	}
 
 	/**
@@ -266,6 +267,13 @@ public final class InlinePreviewLoader {
 		}
 	}
 
+	/** Rechecks permission and decode bounds without replacing listener ownership. */
+	@UiThread
+	public void refresh() {
+		General.checkThisIsUIThread();
+		update();
+	}
+
 	private void update() {
 
 		// A preview is held in memory while the post is either near the visible area of the
@@ -279,6 +287,11 @@ public final class InlinePreviewLoader {
 		final PreviewDetails details = mDetailsSource.calculatePreviewDetails(mActivity);
 
 		if(details == null) {
+			final boolean changed = mState != State.NOT_LOADED || mRequest != null;
+			release();
+			if(changed) {
+				notifyListener();
+			}
 			return;
 		}
 

@@ -75,6 +75,7 @@ public final class RedditPreparedPost implements RedditChangeDataManager.Listene
 	public final boolean mIsProbablyAnImage;
 
 	private final boolean mShowInlinePreviews;
+	@NonNull private final Context mPreviewContext;
 
 	// TODO make it possible to turn off in-memory caching when out of memory
 	private volatile Bitmap thumbnailCache = null;
@@ -123,6 +124,7 @@ public final class RedditPreparedPost implements RedditChangeDataManager.Listene
 		this.src = post;
 		this.showSubreddit = showSubreddit;
 		mShowInlinePreviews = showInlinePreviews;
+		mPreviewContext = context.getApplicationContext();
 
 		mChangeDataManager = RedditChangeDataManager.getInstance(user);
 
@@ -147,12 +149,16 @@ public final class RedditPreparedPost implements RedditChangeDataManager.Listene
 	}
 
 	public boolean shouldShowInlinePreview() {
-		return mShowInlinePreviews && (src.isPreviewEnabled()
+		return mShowInlinePreviews
+				&& PostPreviewPolicy.isAllowed(mPreviewContext, src.getSrc())
+				&& src.hasImagePreview()
+				&& (src.isPreviewEnabled()
 				|| "gfycat.com".equals(src.getDomain())
 				|| "i.imgur.com".equals(src.getDomain())
 				|| "streamable.com".equals(src.getDomain())
 				|| "i.redd.it".equals(src.getDomain())
-				|| "v.redd.it".equals(src.getDomain()));
+				|| "v.redd.it".equals(src.getDomain())
+				|| PrefsUtility.post_layout().usesLargePreviews());
 	}
 
 	public boolean isVideoPreview() {
@@ -170,6 +176,9 @@ public final class RedditPreparedPost implements RedditChangeDataManager.Listene
 		General.checkThisIsUIThread();
 
 		if(!shouldShowInlinePreview()) {
+			if(mInlinePreviewLoader != null) {
+				mInlinePreviewLoader.setActive(false);
+			}
 			return null;
 		}
 

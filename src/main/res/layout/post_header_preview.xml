@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+  ~ This file is part of RedReader.
+  ~
+  ~ RedReader is free software: you can redistribute it and/or modify
+  ~ it under the terms of the GNU General Public License as published by
+  ~ the Free Software Foundation, either version 3 of the License, or
+  ~ (at your option) any later version.
+  ~
+  ~ RedReader is distributed in the hope that it will be useful,
+  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of
+  ~ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  ~ GNU General Public License for more details.
+  ~
+  ~ You should have received a copy of the GNU General Public License
+  ~ along with RedReader.  If not, see <http://www.gnu.org/licenses/>.
+  -->
+
+		<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+				xmlns:app="http://schemas.android.com/apk/res-auto"
+				xmlns:tools="http://schemas.android.com/tools"
+				android:id="@+id/reddit_post_image_preview_outer"
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:orientation="vertical"
+				android:importantForAccessibility="noHideDescendants">
+
+			<View
+					android:layout_width="match_parent"
+					android:layout_height="1px"
+					android:background="?rrPostInlinePreviewDivider"/>
+
+			<org.quantumbadger.redreader.views.InlinePreviewHolderView
+					android:id="@+id/reddit_post_image_preview_holder"
+					android:layout_width="match_parent"
+					android:layout_height="wrap_content"
+					android:background="?rrPostThumbnailBackground">
+
+				<ImageView
+						android:id="@+id/reddit_post_image_preview_imageview"
+						android:layout_width="match_parent"
+						android:layout_height="match_parent"
+						android:scaleType="fitCenter"
+						tools:ignore="ContentDescription"/>
+
+				<androidx.constraintlayout.widget.ConstraintLayout
+						android:id="@+id/reddit_post_image_preview_play_overlay"
+						android:layout_width="match_parent"
+						android:layout_height="match_parent"
+						android:background="#55000000">
+
+					<ImageView
+							android:layout_width="wrap_content"
+							android:layout_height="wrap_content"
+							app:layout_constraintTop_toTopOf="parent"
+							app:layout_constraintBottom_toBottomOf="parent"
+							app:layout_constraintLeft_toLeftOf="parent"
+							app:layout_constraintRight_toRightOf="parent"
+							android:src="@drawable/play_icon_background_circle_dark"
+							tools:ignore="ContentDescription"/>
+
+					<ImageView
+							android:layout_width="wrap_content"
+							android:layout_height="wrap_content"
+							app:layout_constraintTop_toTopOf="parent"
+							app:layout_constraintBottom_toBottomOf="parent"
+							app:layout_constraintLeft_toLeftOf="parent"
+							app:layout_constraintRight_toRightOf="parent"
+							android:src="@drawable/icon_play"
+							tools:ignore="ContentDescription"/>
+
+				</androidx.constraintlayout.widget.ConstraintLayout>
+
+			</org.quantumbadger.redreader.views.InlinePreviewHolderView>
+
+		</LinearLayout>

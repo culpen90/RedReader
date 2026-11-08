@@ -37,6 +37,7 @@ import org.quantumbadger.redreader.common.PrefsUtility;
 import org.quantumbadger.redreader.reddit.api.RedditPostActions;
 import org.quantumbadger.redreader.reddit.prepared.RedditChangeDataManager;
 import org.quantumbadger.redreader.reddit.prepared.RedditPreparedPost;
+import org.quantumbadger.redreader.settings.types.PostLayout;
 
 public class RedditPostHeaderView extends LinearLayout {
 
@@ -93,6 +94,15 @@ public class RedditPostHeaderView extends LinearLayout {
 
 		subtitle.setTextColor(Color.rgb(200, 200, 200));
 		greyHeader.addView(subtitle);
+
+		if(PrefsUtility.post_layout().usesLargePreviews()) {
+			final PostHeaderPreviewView preview = new PostHeaderPreviewView(activity, post);
+			if(PrefsUtility.post_layout() == PostLayout.CARD) {
+				greyHeader.addView(preview, greyHeader.indexOfChild(subtitle));
+			} else {
+				greyHeader.addView(preview);
+			}
+		}
 
 		{
 			final TypedArray appearance = activity.obtainStyledAttributes(new int[] {

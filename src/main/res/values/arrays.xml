@@ -1443,4 +1443,14 @@
 		<item>delete_multireddit</item>
 		<item>remove_subreddit_from_multireddit</item>
 	</string-array>
+	<string-array name="pref_layout_mode_entries">
+		<item>@string/pref_layout_mode_thumbnails</item>
+		<item>@string/pref_layout_mode_alwayspreview</item>
+		<item>@string/pref_layout_mode_card</item>
+	</string-array>
+	<string-array name="pref_layout_mode_values" translatable="false">
+		<item>thumbnails</item>
+		<item>always_preview</item>
+		<item>card</item>
+	</string-array>
 </resources>

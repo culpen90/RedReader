@@ -193,6 +193,13 @@ public final class SettingsFragment extends PreferenceFragmentCompat {
 			});
 		}
 
+		final ListPreference layoutPreference = findPreference(
+				getString(R.string.pref_layout_mode_key));
+		if(layoutPreference != null) {
+			layoutPreference.setSummaryProvider((ListPreference preference) -> getString(
+					R.string.pref_layout_mode_summary, preference.getEntry()));
+		}
+
 		final int[] listPrefsToUpdate = {
 				R.string.pref_appearance_twopane_key,
 				R.string.pref_behaviour_self_post_tap_actions_key,

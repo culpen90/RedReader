@@ -50,6 +50,7 @@ import org.quantumbadger.redreader.reddit.api.RedditPostActions;
 import org.quantumbadger.redreader.reddit.things.InvalidSubredditNameException;
 import org.quantumbadger.redreader.reddit.things.SubredditCanonicalId;
 import org.quantumbadger.redreader.settings.types.AppearanceTheme;
+import org.quantumbadger.redreader.settings.types.PostLayout;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -118,6 +119,14 @@ public final class PrefsUtility {
 		sharedPrefs.edit().putBoolean(getPrefKey(id), newValue).apply();
 	}
 
+	public static PostLayout post_layout() {
+		try {
+			return PostLayout.fromPreference(getString(R.string.pref_layout_mode_key, "thumbnails"));
+		} catch(final ClassCastException e) {
+			return PostLayout.THUMBNAILS;
+		}
+	}
+
 	public static boolean pref_media_type(final PostMediaType type) {
 		return sharedPrefs.getBoolean("pref_media_type_" + type.getPreferenceValue(), true);
 	}
@@ -144,7 +153,8 @@ public final class PrefsUtility {
 	}
 
 	public static boolean isRefreshRequired(final Context context, final String key) {
-		return key.startsWith("pref_appearance")
+		return key.equals(context.getString(R.string.pref_layout_mode_key))
+				|| key.startsWith("pref_appearance")
 				|| key.startsWith("pref_media_type_")
 				|| key.equals(context.getString(R.string.pref_behaviour_fling_post_left_key))
 				|| key.equals(context.getString(R.string.pref_behaviour_fling_post_right_key))

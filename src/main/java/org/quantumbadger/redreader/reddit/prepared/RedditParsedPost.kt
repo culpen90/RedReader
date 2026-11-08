@@ -22,6 +22,10 @@ import org.quantumbadger.redreader.common.UriString
 import org.quantumbadger.redreader.reddit.PostCommentSort
 import org.quantumbadger.redreader.reddit.kthings.RedditIdAndType
 import org.quantumbadger.redreader.reddit.kthings.RedditPost
+import org.quantumbadger.redreader.reddit.kthings.ImageMetadata
+import org.quantumbadger.redreader.reddit.kthings.MaybeParseError
+import java.net.URI
+import java.net.URISyntaxException
 import org.quantumbadger.redreader.reddit.prepared.bodytext.BodyElement
 import org.quantumbadger.redreader.reddit.prepared.html.HtmlReader
 import org.quantumbadger.redreader.reddit.things.RedditThingWithIdAndType
@@ -47,7 +51,7 @@ class RedditParsedPost(
 
 	val isVideoPreview = src.preview?.run {
 		src.is_video
-				|| images?.get(0)?.variants?.mp4 != null
+				|| images?.firstOrNull()?.variants?.mp4 != null
 				|| reddit_video_preview != null
 				|| when (src.domain?.decoded) {
 			"v.redd.it", "streamable.com", "gfycat.com" -> true
@@ -145,78 +149,66 @@ class RedditParsedPost(
 		@JvmField val height: Int
 	)
 
-    fun getPreview(minWidth: Int, minHeight: Int) = src.preview?.images?.get(0)?.run {
-		getPreviewInternal(this, minWidth, minHeight)
+	fun hasImagePreview(): Boolean = getPreview(1, 1) != null
+
+	fun getPreview(minWidth: Int, minHeight: Int): ImagePreviewDetails? {
+		// Gallery posts often have no top-level preview. Choose a bounded still from the
+		// first usable attachment, not its unbounded full-resolution source by default.
+		for (entry in src.gallery_data?.items.orEmpty()) {
+			val item = (entry as? MaybeParseError.Ok)?.value ?: continue
+			val metadata = (src.media_metadata?.get(item.media_id)
+				as? MaybeParseError.Ok)?.value ?: continue
+			if (metadata.status != "valid" || (metadata.e != "Image" && metadata.e != "AnimatedImage")) {
+				continue
+			}
+			val candidates = (metadata.p.orEmpty() + metadata.s).mapNotNull(::galleryCandidate)
+			selectPreview(candidates, minWidth, minHeight)?.let {
+				return it
+			}
+		}
+		return src.preview?.images?.firstOrNull()?.run {
+			getPreviewInternal(this, minWidth, minHeight)
+		}
+	}
+
+	private fun galleryCandidate(image: ImageMetadata): RedditPost.Preview.ImageDetails? {
+		if (image.x !in 1L..Int.MAX_VALUE.toLong() || image.y !in 1L..Int.MAX_VALUE.toLong()) return null
+		val url = image.u ?: image.gif ?: return null
+		return RedditPost.Preview.ImageDetails(url, image.x.toInt(), image.y.toInt())
 	}
 
     fun getPreviewMP4(minWidth: Int, minHeight: Int)
-		= src.preview?.images?.get(0)?.variants?.mp4?.apply {
+		= src.preview?.images?.firstOrNull()?.variants?.mp4?.apply {
 			getPreviewInternal(this, minWidth, minHeight)
 	}
 
-    private fun getPreviewInternal(
+	private fun getPreviewInternal(
 		image: RedditPost.Preview.ImageBase,
 		minWidth: Int,
 		minHeight: Int
-    ): ImagePreviewDetails? {
+	): ImagePreviewDetails? = selectPreview(
+		listOfNotNull(image.source) + image.resolutions.orEmpty(), minWidth, minHeight
+	)
 
-		val resolutions = image.resolutions
-
-		if (resolutions.isNullOrEmpty()) {
-			return null
+	private fun selectPreview(
+		candidates: List<RedditPost.Preview.ImageDetails>,
+		minWidth: Int,
+		minHeight: Int
+	): ImagePreviewDetails? {
+		val valid = candidates.filter { candidate ->
+			candidate.width >= 50 && candidate.height >= 50 && isPreviewUrl(candidate.url.decoded)
 		}
+		val sufficient = valid.filter { it.width >= minWidth && it.height >= minHeight }
+		val best = sufficient.minByOrNull { it.width.toLong() * it.height }
+			?: valid.maxByOrNull { it.width.toLong() * it.height }
+		return best?.let { ImagePreviewDetails(UriString(it.url.decoded), it.width, it.height) }
+	}
 
-		var best: RedditPost.Preview.ImageDetails? = null
-
-		val sourceWidth = image.source?.width
-		val sourceHeight = image.source?.height
-
-		for (i in -1 until resolutions.size) {
-
-			val resolution = if (i == -1) {
-				image.source ?: continue
-			} else {
-				resolutions[i]
-			}
-
-			if (resolution.width < 50 || resolution.height < 50) {
-				continue
-			}
-
-			if (sourceWidth != null && sourceHeight != null && sourceWidth > 0) {
-
-				val estimatedRealHeight =
-					(sourceHeight.toDouble() / sourceWidth.toDouble() * resolution.width).toInt()
-
-				if (estimatedRealHeight > 3000) {
-					continue
-				}
-			}
-
-			val use = if (resolution.height > 3000 || resolution.width > 3000) {
-				false
-			} else if (best == null) {
-				true
-			} else if ((best.width < minWidth || best.height < minHeight)
-				&& (resolution.width > best.width || resolution.height > best.height)
-			) {
-				true
-			} else if (resolution.width < best.width
-					&& resolution.height < best.height
-					&& resolution.width >= minWidth
-					&& resolution.height >= minHeight) {
-				true
-			} else {
-				false
-			}
-
-			if (use) {
-				best = resolution
-			}
-		}
-
-		return best?.run {
-			ImagePreviewDetails(UriString(url.decoded), width, height)
-		}
+	private fun isPreviewUrl(value: String): Boolean = try {
+		val uri = URI(value)
+		(uri.scheme.equals("https", true) || uri.scheme.equals("http", true))
+			&& uri.host != null && uri.userInfo == null
+	} catch (error: URISyntaxException) {
+		false
 	}
 }

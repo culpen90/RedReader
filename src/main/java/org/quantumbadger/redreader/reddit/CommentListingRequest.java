@@ -59,6 +59,7 @@ import org.quantumbadger.redreader.reddit.prepared.InlineCommentMediaPolicy;
 import org.quantumbadger.redreader.reddit.prepared.RedditChangeDataManager;
 import org.quantumbadger.redreader.reddit.prepared.RedditParsedComment;
 import org.quantumbadger.redreader.reddit.prepared.RedditParsedPost;
+import org.quantumbadger.redreader.reddit.prepared.PostPreviewPolicy;
 import org.quantumbadger.redreader.reddit.prepared.RedditPreparedPost;
 import org.quantumbadger.redreader.reddit.prepared.RedditRenderableComment;
 import org.quantumbadger.redreader.reddit.url.RedditURLParser;
@@ -196,7 +197,8 @@ public class CommentListingRequest {
 					true,
 					false,
 					false,
-					false);
+					PrefsUtility.post_layout().usesLargePreviews()
+							&& PostPreviewPolicy.isAllowed(mContext, post));
 
 			AndroidCommon.runOnUiThread(()
 					-> mListener.onCommentListingRequestPostDownloaded(
