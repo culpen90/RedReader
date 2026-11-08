@@ -201,7 +201,12 @@ public class ExoPlayerWrapperView extends FrameLayout {
 					R.drawable.icon_pause,
 					R.string.video_pause,
 					view -> {
-						mVideoPlayer.setPlayWhenReady(!mVideoPlayer.getPlayWhenReady());
+						if(mVideoPlayer.getPlaybackState() == Player.STATE_ENDED) {
+							mVideoPlayer.seekTo(0);
+							mVideoPlayer.setPlayWhenReady(true);
+						} else {
+							mVideoPlayer.setPlayWhenReady(!mVideoPlayer.getPlayWhenReady());
+						}
 						updateProgress();
 					});
 
@@ -425,20 +430,28 @@ public class ExoPlayerWrapperView extends FrameLayout {
 
 			@Override
 			public void onPlayWhenReadyChanged(final boolean playWhenReady, final int reason) {
-
-				if (mPlayButton == null) {
-					return;
-				}
-
-				if(playWhenReady) {
-					mPlayButton.setImageResource(R.drawable.icon_pause);
-					mPlayButton.setContentDescription(context.getString(R.string.video_pause));
-				} else {
-					mPlayButton.setImageResource(R.drawable.icon_play);
-					mPlayButton.setContentDescription(context.getString(R.string.video_play));
-				}
+				updatePlayButton();
 			}
+
+			@Override
+			public void onPlaybackStateChanged(final int playbackState) {
+				updatePlayButton();
+			}
+
 		});
+	}
+
+	private void updatePlayButton() {
+
+		if(mPlayButton == null) {
+			return;
+		}
+
+		final boolean playing = mVideoPlayer.getPlayWhenReady()
+				&& mVideoPlayer.getPlaybackState() != Player.STATE_ENDED;
+		mPlayButton.setImageResource(playing ? R.drawable.icon_pause : R.drawable.icon_play);
+		mPlayButton.setContentDescription(getContext().getString(
+				playing ? R.string.video_pause : R.string.video_play));
 	}
 
 	public void handleTap() {
