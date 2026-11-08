@@ -524,7 +524,8 @@ public class PostListingFragment extends RRFragment
 		MultiredditActionMenus.attachToHeader(
 				getActivity(), mListingAccount, mPostListingURL, postListingHeader, () -> {
 					if(hasListingAccount() && mOuter.isAttachedToWindow()) {
-						((OptionsMenuUtility.OptionsMenuPostsListener)getActivity()).onRefreshPosts();
+						((OptionsMenuUtility.OptionsMenuPostsListener)getActivity())
+								.onRefreshPosts();
 					}
 				});
 
