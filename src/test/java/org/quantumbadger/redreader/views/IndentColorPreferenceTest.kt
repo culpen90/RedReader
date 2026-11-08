@@ -35,11 +35,13 @@ import org.quantumbadger.redreader.common.PrefsUtility
 import org.quantumbadger.redreader.common.SharedPrefsWrapper
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
+import org.robolectric.annotation.GraphicsMode
 import org.robolectric.annotation.Config
 import org.robolectric.util.ReflectionHelpers
 import java.util.concurrent.atomic.AtomicReference
 
 @RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [28])
 class IndentColorPreferenceTest {
 
