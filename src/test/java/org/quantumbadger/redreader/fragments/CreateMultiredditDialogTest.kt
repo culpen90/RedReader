@@ -32,6 +32,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.quantumbadger.redreader.R
 import org.quantumbadger.redreader.account.RedditAccount
+import org.quantumbadger.redreader.account.RedditAccountManager
 import org.quantumbadger.redreader.activities.ChangelogActivity
 import org.quantumbadger.redreader.common.General
 import org.quantumbadger.redreader.common.PrefsUtility
@@ -74,6 +75,10 @@ class CreateMultiredditDialogTest {
 		ReflectionHelpers.setStaticField(PrefsUtility::class.java, "sharedPrefs", wrapped)
 		ReflectionHelpers.setStaticField(PrefsUtility::class.java, "mRes", app.resources)
 		ReflectionHelpers.setStaticField(PrefsUtility::class.java, "appContext", app)
+		ReflectionHelpers.setStaticField(RedditAccountManager::class.java, "singleton", null)
+		val accounts = RedditAccountManager.getInstance(app)
+		ReflectionHelpers.setField(accounts, "accountsCache", arrayListOf(account))
+		ReflectionHelpers.setField(accounts, "defaultAccountCache", account)
 	}
 
 	@After
@@ -219,6 +224,18 @@ class CreateMultiredditDialogTest {
 		input.setText("news")
 		dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
 		assertNotNull(input.error)
+		assertTrue(backend.calls.isEmpty())
+	}
+
+	@Test
+	fun replacedCredentialsCannotSubmitCapturedDialog() {
+		val backend = FakeBackend()
+		val (dialog, input) = show(backend)
+		val accounts = RedditAccountManager.getInstance(app)
+		ReflectionHelpers.setField(accounts, "accountsCache", arrayListOf(
+			RedditAccount("Alice", null, 0, "replacement-client")))
+		input.setText("news")
+		dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
 		assertTrue(backend.calls.isEmpty())
 	}
 

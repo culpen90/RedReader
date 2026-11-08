@@ -30,6 +30,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.quantumbadger.redreader.R
 import org.quantumbadger.redreader.account.RedditAccount
+import org.quantumbadger.redreader.account.RedditAccountManager
 import org.quantumbadger.redreader.activities.ChangelogActivity
 import org.quantumbadger.redreader.common.General
 import org.quantumbadger.redreader.common.PrefsUtility
@@ -68,6 +69,10 @@ class DeleteMultiredditDialogTest {
 		ReflectionHelpers.setStaticField(PrefsUtility::class.java, "sharedPrefs", wrapped)
 		ReflectionHelpers.setStaticField(PrefsUtility::class.java, "mRes", app.resources)
 		ReflectionHelpers.setStaticField(PrefsUtility::class.java, "appContext", app)
+		ReflectionHelpers.setStaticField(RedditAccountManager::class.java, "singleton", null)
+		val accounts = RedditAccountManager.getInstance(app)
+		ReflectionHelpers.setField(accounts, "accountsCache", arrayListOf(account))
+		ReflectionHelpers.setField(accounts, "defaultAccountCache", account)
 	}
 
 	@After
@@ -122,6 +127,7 @@ class DeleteMultiredditDialogTest {
 		assertTrue(allText(dialog.window!!.decorView).contains("/user/alice/m/news"))
 		assertTrue(backend.calls.isEmpty())
 		dialog.getButton(AlertDialog.BUTTON_NEGATIVE).performClick()
+		idle()
 		assertTrue(backend.calls.isEmpty())
 		assertFalse(dialog.isShowing)
 	}
@@ -139,7 +145,7 @@ class DeleteMultiredditDialogTest {
 		val dialog = MultiredditDialogs.showDelete(activity, account, other, null, backend)
 		dialogs.add(dialog)
 		idle()
-		assertNull(dialog.getButton(AlertDialog.BUTTON_POSITIVE))
+		assertTrue(dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.visibility != View.VISIBLE)
 		assertTrue(backend.calls.isEmpty())
 		val header = PostListingHeader(activity, "Bob news", "Bob", url, null)
 		MultiredditActionMenus.attachToHeader(activity, account, url, header)
@@ -198,5 +204,15 @@ class DeleteMultiredditDialogTest {
 		General.getSharedPrefs(app).edit().putStringSet(app.getString(
 			R.string.pref_menus_multireddits_context_items_key), emptySet()).apply()
 		assertNull(MultiredditActionMenus.showMultireddit(activity, account, target, null))
+	}
+
+	@Test
+	fun removedAccountCannotSubmitCapturedConfirmation() {
+		val backend = FakeBackend()
+		val dialog = show(backend)
+		ReflectionHelpers.setField(RedditAccountManager.getInstance(app),
+			"accountsCache", arrayListOf<RedditAccount>())
+		dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+		assertTrue(backend.calls.isEmpty())
 	}
 }

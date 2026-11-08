@@ -114,10 +114,11 @@ public class PostListingFragment extends RRFragment
 	private static final String TAG = "PostListingFragment";
 
 	private static final String SAVEDSTATE_FIRST_VISIBLE_POS = "firstVisiblePosition";
+	private static final String SAVEDSTATE_ACCOUNT = "listingAccount";
 
 	@NonNull private PostListingURL mPostListingURL;
 
-	@NonNull private final RedditAccount mListingAccount;
+	@Nullable private final RedditAccount mListingAccount;
 
 	@Nullable private RedditSubreddit mSubreddit;
 
@@ -164,7 +165,11 @@ public class PostListingFragment extends RRFragment
 
 		super(parent, savedInstanceState);
 
-		mListingAccount = RedditAccountManager.getInstance(parent).getDefaultAccount();
+		final RedditAccountManager accounts = RedditAccountManager.getInstance(parent);
+		final String restoredAccount = savedInstanceState == null
+				? null : savedInstanceState.getString(SAVEDSTATE_ACCOUNT);
+		mListingAccount = restoredAccount == null
+				? accounts.getDefaultAccount() : accounts.getAccount(restoredAccount);
 
 		mPostListingManager = new PostListingManager(parent);
 
@@ -263,6 +268,12 @@ public class PostListingFragment extends RRFragment
 				this::onListLayout);
 
 		General.setLayoutMatchParent(mRecyclerView);
+
+		if(!hasListingAccount()) {
+			// A removed account must never turn a restored /me/ listing into another account's.
+			parent.finish();
+			return;
+		}
 
 		final DownloadStrategy downloadStrategy;
 
@@ -421,6 +432,9 @@ public class PostListingFragment extends RRFragment
 	public Bundle onSaveInstanceState() {
 
 		final Bundle bundle = new Bundle();
+		if(mListingAccount != null) {
+			bundle.putString(SAVEDSTATE_ACCOUNT, mListingAccount.username);
+		}
 
 		final LinearLayoutManager layoutManager
 				= (LinearLayoutManager)mRecyclerView.getLayoutManager();
@@ -606,6 +620,9 @@ public class PostListingFragment extends RRFragment
 	private void onLoadMoreItemsCheck() {
 
 		General.checkThisIsUIThread();
+		if(!hasListingAccount()) {
+			return;
+		}
 
 		if(mReadyToDownloadMore && mAfter != null && !mAfter.equals(mLastAfter)) {
 
@@ -632,8 +649,7 @@ public class PostListingFragment extends RRFragment
 
 				mRequest = createPostListingRequest(
 						UriString.from(newUri),
-						RedditAccountManager.getInstance(getActivity())
-								.getDefaultAccount(),
+						mListingAccount,
 						mSession,
 						strategy,
 						false);
@@ -657,6 +673,11 @@ public class PostListingFragment extends RRFragment
 				}
 			}
 		}
+	}
+
+	private boolean hasListingAccount() {
+		return mListingAccount != null
+				&& MultiredditActionMenus.isAccountAvailable(getContext(), mListingAccount);
 	}
 
 	public void onSubscribe() {

@@ -17,16 +17,22 @@
 
 package org.quantumbadger.redreader.reddit.api;
 
+import android.content.Context;
 import android.view.View;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.DefaultLifecycleObserver;
+import androidx.lifecycle.Lifecycle;
+import androidx.lifecycle.LifecycleOwner;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import org.quantumbadger.redreader.R;
 import org.quantumbadger.redreader.account.RedditAccount;
+import org.quantumbadger.redreader.account.RedditAccountManager;
 import org.quantumbadger.redreader.common.General;
 import org.quantumbadger.redreader.common.Constants;
 import org.quantumbadger.redreader.common.LinkHandler;
@@ -84,7 +90,8 @@ public final class MultiredditActionMenus {
 			final AppCompatActivity activity,
 			final RedditAccount account,
 			final SubredditPostListURL url) {
-		if(account.isAnonymous() || !PrefsUtility.getStringSet(
+		if(!isLiveHost(activity) || !isAccountAvailable(activity, account)
+				|| account.isAnonymous() || !PrefsUtility.getStringSet(
 				R.string.pref_menus_subreddit_combinations_context_items_key,
 				R.array.pref_menus_subreddit_combinations_context_items_return)
 				.contains("create_multireddit")) {
@@ -97,12 +104,10 @@ public final class MultiredditActionMenus {
 			General.quickToast(activity, R.string.multireddit_invalid_members);
 			return null;
 		}
-		return new MaterialAlertDialogBuilder(activity)
-				.setTitle(url.humanReadableName(activity, true))
-				.setItems(new String[] { activity.getString(R.string.create_multireddit) },
-						(dialog, item) -> MultiredditDialogs.showCreate(
-								activity, account, subreddits))
-				.show();
+		return showMenu(activity, account, url.humanReadableName(activity, true),
+				Collections.singletonList(activity.getString(R.string.create_multireddit)),
+				Collections.singletonList(() -> MultiredditDialogs.showCreate(
+						activity, account, subreddits)));
 	}
 
 	@Nullable
@@ -111,7 +116,8 @@ public final class MultiredditActionMenus {
 			final RedditAccount account,
 			final MultiredditTarget target,
 			@Nullable final Runnable onDeleted) {
-		if(!target.isOwnedBy(account)) {
+		if(!isLiveHost(activity) || !isAccountAvailable(activity, account)
+				|| !target.isOwnedBy(account)) {
 			return null;
 		}
 		final ArrayList<String> titles = new ArrayList<>();
@@ -126,10 +132,80 @@ public final class MultiredditActionMenus {
 		if(actions.isEmpty()) {
 			return null;
 		}
-		return new MaterialAlertDialogBuilder(activity)
-				.setTitle(target.getDisplayPath())
-				.setItems(titles.toArray(new String[0]), (dialog, item) -> actions.get(item).run())
-				.show();
+		return showMenu(activity, account, target.getDisplayPath(), titles, actions);
+	}
+
+	public static boolean isAccountAvailable(final Context context, final RedditAccount account) {
+		return account.equals(RedditAccountManager.getInstance(context).getAccount(account.username));
+	}
+
+	private static boolean isLiveHost(final AppCompatActivity activity) {
+		return !activity.isFinishing() && !activity.isDestroyed()
+				&& activity.getLifecycle().getCurrentState().isAtLeast(Lifecycle.State.STARTED);
+	}
+
+	private static AlertDialog showMenu(
+			final AppCompatActivity activity,
+			final RedditAccount account,
+			final String title,
+			final List<String> titles,
+			final List<Runnable> actions) {
+		final MenuSession session = new MenuSession(activity, account);
+		final AlertDialog dialog = new MaterialAlertDialogBuilder(activity)
+				.setTitle(title)
+				.setItems(titles.toArray(new String[0]), (menu, item) -> {
+					if(session.isUsable()) {
+						actions.get(item).run();
+					}
+				})
+				.create();
+		session.attach(dialog);
+		dialog.show();
+		return dialog;
+	}
+
+	private static final class MenuSession implements DefaultLifecycleObserver {
+		private final AppCompatActivity mActivity;
+		private final RedditAccount mAccount;
+		@Nullable private AlertDialog mDialog;
+
+		private MenuSession(final AppCompatActivity activity, final RedditAccount account) {
+			mActivity = activity;
+			mAccount = account;
+		}
+
+		private void attach(final AlertDialog dialog) {
+			mDialog = dialog;
+			dialog.setOnDismissListener(ignored -> detach());
+			mActivity.getLifecycle().addObserver(this);
+		}
+
+		private boolean isUsable() {
+			return mDialog != null && mDialog.isShowing() && isLiveHost(mActivity)
+					&& isAccountAvailable(mActivity, mAccount);
+		}
+
+		private void detach() {
+			mDialog = null;
+			mActivity.getLifecycle().removeObserver(this);
+		}
+
+		private void dismiss() {
+			if(mDialog != null) {
+				mDialog.dismiss();
+			}
+			detach();
+		}
+
+		@Override
+		public void onStop(@NonNull final LifecycleOwner owner) {
+			dismiss();
+		}
+
+		@Override
+		public void onDestroy(@NonNull final LifecycleOwner owner) {
+			dismiss();
+		}
 	}
 
 	public static List<SubredditCanonicalId> combinationSubreddits(final SubredditPostListURL url) {
