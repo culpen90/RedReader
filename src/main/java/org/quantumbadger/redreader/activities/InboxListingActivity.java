@@ -18,6 +18,7 @@
 package org.quantumbadger.redreader.activities;
 
 import android.content.Context;
+import android.graphics.Rect;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -28,6 +29,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -59,6 +61,7 @@ import org.quantumbadger.redreader.common.time.TimeDuration;
 import org.quantumbadger.redreader.common.time.TimestampUTC;
 import org.quantumbadger.redreader.http.FailedRequestBody;
 import org.quantumbadger.redreader.reddit.APIResponseHandler;
+import org.quantumbadger.redreader.reddit.InboxReadOnExit;
 import org.quantumbadger.redreader.reddit.RedditAPI;
 import org.quantumbadger.redreader.reddit.kthings.JsonUtils;
 import org.quantumbadger.redreader.reddit.kthings.MaybeParseError;
@@ -81,7 +84,9 @@ import org.quantumbadger.redreader.views.liststatus.LoadingView;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class InboxListingActivity extends ViewsBaseActivity {
 
@@ -90,12 +95,16 @@ public final class InboxListingActivity extends ViewsBaseActivity {
 	private static final int OPTIONS_MENU_MARK_ALL_AS_READ = 0;
 	private static final int OPTIONS_MENU_SHOW_UNREAD_ONLY = 1;
 	private static final int OPTIONS_MENU_REFRESH = 2;
+	private static final int OPTIONS_MENU_MARK_VIEWED_ON_EXIT = 3;
 
 	public enum InboxType {
 		INBOX, SENT, MODMAIL
 	}
 
 	private static final String PREF_ONLY_UNREAD = "inbox_only_show_unread";
+	private static final String PREF_MARK_VIEWED_ON_EXIT = "inbox_mark_as_read_when_back";
+	private static final String STATE_ACCOUNT = "inbox_account";
+	private static final String STATE_VIEWED_IDS = "inbox_viewed_unread_ids";
 
 	private GroupedRecyclerViewAdapter adapter;
 
@@ -106,6 +115,20 @@ public final class InboxListingActivity extends ViewsBaseActivity {
 
 	private InboxType inboxType;
 	private boolean mOnlyShowUnread;
+	private boolean mMarkViewedReadOnExit;
+	private RedditAccount mUser;
+	private InboxReadOnExit mReadOnExit;
+	private RecyclerView mRecyclerView;
+	private boolean mResumed;
+	private volatile boolean mDestroyed;
+	private final Rect mVisibleBounds = new Rect();
+	private final Rect mRowBounds = new Rect();
+	private final Rect mContentBounds = new Rect();
+	private final int[] mLocationOnScreen = new int[2];
+	private final ViewTreeObserver.OnPreDrawListener mVisibleItemsListener = () -> {
+		recordVisibleUnreadItems();
+		return true;
+	};
 
 	private RRThemeAttributes mTheme;
 	private RedditChangeDataManager mChangeDataManager;
@@ -118,6 +141,9 @@ public final class InboxListingActivity extends ViewsBaseActivity {
 	private final Handler itemHandler = new Handler(Looper.getMainLooper()) {
 		@Override
 		public void handleMessage(final Message msg) {
+			if(mDestroyed || isFinishing()) {
+				return;
+			}
 			final InboxItem item = (InboxItem)msg.obj;
 			mItems.add(item);
 			adapter.appendToGroup(0, item);
@@ -127,9 +153,11 @@ public final class InboxListingActivity extends ViewsBaseActivity {
 	private final class InboxItem extends GroupedRecyclerViewAdapter.Item {
 
 		private final RedditRenderableInboxItem mItem;
+		private final boolean mUnreadOnLoad;
 
-		private InboxItem(final RedditRenderableInboxItem item) {
+		private InboxItem(final RedditRenderableInboxItem item, final boolean unreadOnLoad) {
 			this.mItem = item;
+			mUnreadOnLoad = unreadOnLoad;
 		}
 
 		@Override
@@ -142,6 +170,7 @@ public final class InboxListingActivity extends ViewsBaseActivity {
 
 			final RedditInboxItemView view = new RedditInboxItemView(
 					InboxListingActivity.this,
+					mUser,
 					mTheme,
 					inboxType != InboxType.SENT,
 					mExpandedItems);
@@ -184,9 +213,20 @@ public final class InboxListingActivity extends ViewsBaseActivity {
 		PrefsUtility.applyTheme(this);
 		super.onCreate(savedInstanceState);
 
+		final RedditAccountManager accounts = RedditAccountManager.getInstance(this);
+		final String restoredAccount = savedInstanceState == null
+				? null : savedInstanceState.getString(STATE_ACCOUNT);
+		mUser = restoredAccount == null
+				? accounts.getDefaultAccount() : accounts.getAccount(restoredAccount);
+		if(mUser == null) {
+			// Never restore another account's viewed IDs into the new default account.
+			finish();
+			return;
+		}
+		mReadOnExit = new InboxReadOnExit(mUser, savedInstanceState == null
+				? null : savedInstanceState.getStringArrayList(STATE_VIEWED_IDS));
 		mTheme = new RRThemeAttributes(this);
-		mChangeDataManager = RedditChangeDataManager.getInstance(
-				RedditAccountManager.getInstance(this).getDefaultAccount());
+		mChangeDataManager = RedditChangeDataManager.getInstance(mUser);
 
 		final SharedPrefsWrapper sharedPreferences
 				= General.getSharedPrefs(this);
@@ -205,6 +245,7 @@ public final class InboxListingActivity extends ViewsBaseActivity {
 		}
 
 		mOnlyShowUnread = sharedPreferences.getBoolean(PREF_ONLY_UNREAD, false);
+		mMarkViewedReadOnExit = sharedPreferences.getBoolean(PREF_MARK_VIEWED_ON_EXIT, false);
 
 		switch(inboxType) {
 			case SENT:
@@ -237,7 +278,9 @@ public final class InboxListingActivity extends ViewsBaseActivity {
 				= new ScrollbarRecyclerViewManager(this, null, false);
 
 		adapter = new GroupedRecyclerViewAdapter(1);
-		recyclerViewManager.getRecyclerView().setAdapter(adapter);
+		mRecyclerView = recyclerViewManager.getRecyclerView();
+		mRecyclerView.setAdapter(adapter);
+		mRecyclerView.getViewTreeObserver().addOnPreDrawListener(mVisibleItemsListener);
 
 		outer.addView(notifications);
 		outer.addView(recyclerViewManager.getOuterView());
@@ -255,8 +298,7 @@ public final class InboxListingActivity extends ViewsBaseActivity {
 
 	private void makeFirstRequest(final Context context) {
 
-		final RedditAccount user = RedditAccountManager.getInstance(context)
-				.getDefaultAccount();
+		final RedditAccount user = mUser;
 		final CacheManager cm = CacheManager.getInstance(context);
 
 		final UriString url;
@@ -267,9 +309,9 @@ public final class InboxListingActivity extends ViewsBaseActivity {
 			url = Constants.Reddit.getUri("/message/moderator.json?limit=100");
 		} else {
 			if(mOnlyShowUnread) {
-				url = Constants.Reddit.getUri("/message/unread.json?mark=true&limit=100");
+				url = Constants.Reddit.getUri("/message/unread.json?mark=false&limit=100");
 			} else {
-				url = Constants.Reddit.getUri("/message/inbox.json?mark=true&limit=100");
+				url = Constants.Reddit.getUri("/message/inbox.json?mark=false&limit=100");
 			}
 		}
 
@@ -295,6 +337,9 @@ public final class InboxListingActivity extends ViewsBaseActivity {
 							final boolean fromCache,
 							@Nullable final String mimetype) {
 
+						if(mDestroyed || isFinishing()) {
+							return;
+						}
 						try {
 							final RedditThing rootThing = JsonUtils.INSTANCE
 									.decodeRedditThingFromStream(streamFactory.create());
@@ -311,6 +356,9 @@ public final class InboxListingActivity extends ViewsBaseActivity {
 							if(fromCache) {
 								if (timestamp.elapsed().isGreaterThan(TimeDuration.minutes(10))) {
 									AndroidCommon.UI_THREAD_HANDLER.post(() -> {
+										if(mDestroyed) {
+											return;
+										}
 										final TextView cacheNotif = new TextView(context);
 										cacheNotif.setText(context.getString(
 												R.string.listing_cached,
@@ -375,7 +423,9 @@ public final class InboxListingActivity extends ViewsBaseActivity {
 
 									itemHandler.sendMessage(General.handlerMessage(
 											0,
-											new InboxItem(renderableComment)));
+											new InboxItem(
+											renderableComment,
+											Boolean.TRUE.equals(comment.getNew()))));
 
 								} else if(thing instanceof RedditThing.Message) {
 
@@ -392,7 +442,9 @@ public final class InboxListingActivity extends ViewsBaseActivity {
 
 									itemHandler.sendMessage(General.handlerMessage(
 											0,
-											new InboxItem(message)));
+											new InboxItem(
+													message,
+													Boolean.TRUE.equals(messageRaw.getNew()))));
 
 									if(message.src.getReplies()
 											instanceof RedditFieldReplies.Some) {
@@ -421,7 +473,9 @@ public final class InboxListingActivity extends ViewsBaseActivity {
 
 											itemHandler.sendMessage(General.handlerMessage(
 													0,
-													new InboxItem(childMsg)));
+													new InboxItem(
+													childMsg,
+													Boolean.TRUE.equals(childMsgRaw.getNew()))));
 										}
 									}
 								} else {
@@ -448,6 +502,9 @@ public final class InboxListingActivity extends ViewsBaseActivity {
 					@Override
 					public void onFailure(@NonNull final RRError error) {
 
+						if(mDestroyed) {
+							return;
+						}
 						Log.e(TAG, "Inbox fetch error: " + error, error.t);
 
 						request = null;
@@ -456,12 +513,143 @@ public final class InboxListingActivity extends ViewsBaseActivity {
 							loadingView.setDone(R.string.download_failed);
 						}
 
-						AndroidCommon.runOnUiThread(() -> notifications.addView(
-								new ErrorView(InboxListingActivity.this, error)));
+						AndroidCommon.runOnUiThread(() -> {
+							if(!mDestroyed) {
+								notifications.addView(new ErrorView(
+										InboxListingActivity.this, error));
+							}
+						});
 					}
 				});
 
 		cm.makeRequest(request);
+	}
+
+	private void recordVisibleUnreadItems() {
+		if(mDestroyed || !mResumed || mRecyclerView == null || !mRecyclerView.isShown()
+				|| !mRecyclerView.getGlobalVisibleRect(mVisibleBounds)) {
+			return;
+		}
+		mRecyclerView.getLocationOnScreen(mLocationOnScreen);
+		mContentBounds.set(
+				mLocationOnScreen[0] + mRecyclerView.getPaddingLeft(),
+				mLocationOnScreen[1] + mRecyclerView.getPaddingTop(),
+				mLocationOnScreen[0] + mRecyclerView.getWidth() - mRecyclerView.getPaddingRight(),
+				mLocationOnScreen[1] + mRecyclerView.getHeight()
+						- mRecyclerView.getPaddingBottom());
+		if(!mVisibleBounds.intersect(mContentBounds)) {
+			return;
+		}
+		for(int i = 0; i < mRecyclerView.getChildCount(); i++) {
+			final View row = mRecyclerView.getChildAt(i);
+			if(!row.isShown() || !row.getGlobalVisibleRect(mRowBounds)
+					|| !Rect.intersects(mVisibleBounds, mRowBounds)) {
+				continue;
+			}
+			final int position = mRecyclerView.getChildAdapterPosition(row);
+			if(position < 0 || position >= adapter.getItemCount()) {
+				continue;
+			}
+			final InboxItem item = (InboxItem)adapter.getItemAtPosition(position);
+			mReadOnExit.onVisible(item.mItem.getIdAndType(), item.mUnreadOnLoad);
+		}
+	}
+
+	@Override
+	protected void onResume() {
+		super.onResume();
+		mResumed = true;
+	}
+
+	@Override
+	protected void onPause() {
+		recordVisibleUnreadItems();
+		mResumed = false;
+		super.onPause();
+	}
+
+	@Override
+	protected void onSaveInstanceState(@NonNull final Bundle state) {
+		recordVisibleUnreadItems();
+		if(mUser != null && mReadOnExit != null) {
+			state.putString(STATE_ACCOUNT, mUser.username);
+			state.putStringArrayList(STATE_VIEWED_IDS, mReadOnExit.savedIds());
+		}
+		super.onSaveInstanceState(state);
+	}
+
+	@Override
+	public void finish() {
+		markViewedMessagesOnExit();
+		super.finish();
+	}
+
+	@Override
+	protected void onStop() {
+		if(isFinishing()) {
+			markViewedMessagesOnExit();
+		}
+		super.onStop();
+	}
+
+	@Override
+	protected void onDestroy() {
+		mDestroyed = true;
+		cancel();
+		itemHandler.removeCallbacksAndMessages(null);
+		if(mRecyclerView != null) {
+			final ViewTreeObserver observer = mRecyclerView.getViewTreeObserver();
+			if(observer.isAlive()) {
+				observer.removeOnPreDrawListener(mVisibleItemsListener);
+			}
+		}
+		super.onDestroy();
+	}
+
+	private void markViewedMessagesOnExit() {
+		if(mUser == null || mReadOnExit == null || mChangeDataManager == null) {
+			return;
+		}
+		recordVisibleUnreadItems();
+		final RedditAccount registered = RedditAccountManager.getInstance(this)
+				.getAccount(mUser.username);
+		final List<List<RedditIdAndType>> batches = mReadOnExit.finish(
+				mMarkViewedReadOnExit && mUser.equals(registered),
+				inboxType != InboxType.SENT,
+				mChangeDataManager::isRead);
+		final RedditChangeDataManager changes = mChangeDataManager;
+		final Context appContext = getApplicationContext();
+		final AtomicBoolean failureShown = new AtomicBoolean();
+		for(final List<RedditIdAndType> batch : batches) {
+			RedditAPI.markMessagesAsRead(
+					CacheManager.getInstance(appContext),
+					new APIResponseHandler.ActionResponseHandler(this) {
+						@Override
+						protected void onSuccess() {
+							final TimestampUTC now = TimestampUTC.now();
+							for(final RedditIdAndType id : batch) {
+								changes.markRead(now, id, true);
+							}
+						}
+
+						@Override
+						protected void onFailure(@NonNull final RRError error) {
+							Log.e(TAG, "Failed to mark viewed inbox items read", error.t);
+							if(failureShown.compareAndSet(false, true)) {
+								General.quickToast(appContext, R.string.inbox_mark_read_failed);
+							}
+						}
+
+						@Override
+						protected void onCallbackException(final Throwable error) {
+							BugReportActivity.addGlobalError(new RRError(
+									"Mark viewed messages read", "Callback failure", true, error));
+						}
+					},
+					mUser,
+					batch,
+					appContext);
+		}
 	}
 
 	@Override
@@ -481,6 +669,13 @@ public final class InboxListingActivity extends ViewsBaseActivity {
 			if (mOnlyShowUnread) {
 				menu.getItem(2).setChecked(true);
 			}
+		}
+
+		if(inboxType != InboxType.SENT && mUser.isNotAnonymous()) {
+			menu.add(0, OPTIONS_MENU_MARK_VIEWED_ON_EXIT, 3,
+					R.string.mark_inbox_as_read_when_back)
+					.setCheckable(true)
+					.setChecked(mMarkViewedReadOnExit);
 		}
 
 		return super.onCreateOptionsMenu(menu);
@@ -529,10 +724,18 @@ public final class InboxListingActivity extends ViewsBaseActivity {
 										error);
 							}
 						},
-						RedditAccountManager.getInstance(this).getDefaultAccount(),
+						mUser,
 						this);
 
 				return true;
+
+			case OPTIONS_MENU_MARK_VIEWED_ON_EXIT: {
+				mMarkViewedReadOnExit = !item.isChecked();
+				item.setChecked(mMarkViewedReadOnExit);
+				General.getSharedPrefs(this).edit()
+						.putBoolean(PREF_MARK_VIEWED_ON_EXIT, mMarkViewedReadOnExit).apply();
+				return true;
+			}
 
 			case OPTIONS_MENU_SHOW_UNREAD_ONLY: {
 
