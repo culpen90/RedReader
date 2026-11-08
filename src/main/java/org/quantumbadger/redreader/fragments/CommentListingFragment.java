@@ -26,6 +26,7 @@ import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.accessibility.AccessibilityManager;
 import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.animation.Animation;
@@ -79,6 +80,7 @@ import org.quantumbadger.redreader.views.liststatus.CommentSubThreadView;
 import org.quantumbadger.redreader.views.liststatus.ErrorView;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.UUID;
@@ -233,6 +235,7 @@ public class CommentListingFragment extends RRFragment
 				previousButton.setImageResource(R.drawable.ic_ff_up_dark);
 				previousButton.setContentDescription(
 						getString(R.string.button_prev_comment_parent));
+				previousButton.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
 				mFloatingToolbar.addView(previousButton);
 
 				previousButton.setOnClickListener(view -> {
@@ -259,6 +262,7 @@ public class CommentListingFragment extends RRFragment
 						buttonVPadding);
 				nextButton.setImageResource(R.drawable.ic_ff_down_dark);
 				nextButton.setContentDescription(getString(R.string.button_next_comment_parent));
+				nextButton.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
 				mFloatingToolbar.addView(nextButton);
 
 				nextButton.setOnClickListener(view -> {
@@ -347,7 +351,84 @@ public class CommentListingFragment extends RRFragment
 					nowCollapsed
 							? R.string.accessibility_announcement_comment_collapsed
 							: R.string.accessibility_announcement_comment_expanded);
+
+			final AccessibilityManager accessibilityManager = (AccessibilityManager)
+					getContext().getSystemService(Context.ACCESSIBILITY_SERVICE);
+			if(nowCollapsed && position != RecyclerView.NO_POSITION
+					&& accessibilityManager != null
+					&& accessibilityManager.isTouchExplorationEnabled()) {
+				focusNextComment(position);
+			}
 		}
+	}
+
+	public void handleThreadCollapse(final RedditCommentView view) {
+
+		final RedditChangeDataManager changeDataManager
+				= RedditChangeDataManager.getInstance(mUser);
+
+		RedditCommentListItem item = view.getComment();
+
+		if(!item.isComment()) {
+			return;
+		}
+
+		final HashSet<RedditCommentListItem> ancestors = new HashSet<>();
+
+		for(RedditCommentListItem ancestor = item;
+				ancestor != null;
+				ancestor = ancestor.getParent()) {
+			ancestors.add(ancestor);
+		}
+
+		final int initialItemCount = mCommentListingManager.getAdapter().getItemCount();
+		int threadPosition = -1;
+
+		for(int position = 0; position < initialItemCount; position++) {
+			final GroupedRecyclerViewAdapter.Item candidate
+					= mCommentListingManager.getItemAtPosition(position);
+
+			if(ancestors.contains(candidate)) {
+				item = (RedditCommentListItem)candidate;
+				threadPosition = position;
+				break;
+			}
+		}
+
+		if(threadPosition < 0) {
+			return;
+		}
+
+		if(item.asComment().isCollapsed(changeDataManager)) {
+			changeDataManager.markHidden(
+					TimestampUTC.now(),
+					item.asComment().getIdAndType(),
+					false);
+
+			mCommentListingManager.updateHiddenStatus();
+			return;
+		}
+
+		changeDataManager.markHidden(
+				TimestampUTC.now(),
+				item.asComment().getIdAndType(),
+				true);
+
+		mCommentListingManager.updateHiddenStatus();
+
+		final LinearLayoutManager layoutManager
+				= (LinearLayoutManager)mRecyclerView.getLayoutManager();
+		final int itemCount = layoutManager.getItemCount();
+
+		for(int position = threadPosition + 1; position < itemCount; position++) {
+			if(isTopLevelComment(position)) {
+				jumpToPosition(threadPosition, position);
+				return;
+			}
+		}
+
+		// Keep focus on a visible row when the invoking descendant disappears.
+		jumpToPosition(threadPosition);
 	}
 
 	@Override
@@ -410,6 +491,10 @@ public class CommentListingFragment extends RRFragment
 				handleCommentVisibilityToggle(view);
 				break;
 
+			case COLLAPSE_THREAD:
+				handleThreadCollapse(view);
+				break;
+
 			case ACTION_MENU: {
 				final RedditCommentListItem item = view.getComment();
 				if(item != null && item.isComment()) {
@@ -446,6 +531,10 @@ public class CommentListingFragment extends RRFragment
 
 			case COLLAPSE:
 				handleCommentVisibilityToggle(view);
+				break;
+
+			case COLLAPSE_THREAD:
+				handleThreadCollapse(view);
 				break;
 
 			case NOTHING:
@@ -778,6 +867,27 @@ public class CommentListingFragment extends RRFragment
 		}
 	}
 
+	private void focusNextComment(final int startingPosition) {
+		final LinearLayoutManager layoutManager
+				= (LinearLayoutManager)mRecyclerView.getLayoutManager();
+
+		for(
+			int pos = startingPosition + 1;
+			pos < layoutManager.getItemCount();
+			pos++
+		) {
+			final GroupedRecyclerViewAdapter.Item item
+					= mCommentListingManager.getItemAtPosition(pos);
+
+			if(item instanceof RedditCommentListItem
+					&& ((RedditCommentListItem)item).isComment()) {
+				mParentJumpCount++;
+				setAccessibilityFocusAfterLayout(pos, true);
+				return;
+			}
+		}
+	}
+
 	private boolean isTopLevelComment(final int position) {
 		final GroupedRecyclerViewAdapter.Item item
 				= mCommentListingManager.getItemAtPosition(position);
@@ -788,12 +898,19 @@ public class CommentListingFragment extends RRFragment
 	}
 
 	private void jumpToPosition(final int position) {
+		jumpToPosition(position, position);
+	}
+
+	private void jumpToPosition(
+			final int scrollPosition,
+			final int focusPosition) {
+
 		final LinearLayoutManager layoutManager
 				= (LinearLayoutManager)mRecyclerView.getLayoutManager();
 
 		mParentJumpCount++;
-		layoutManager.scrollToPositionWithOffset(position, 0);
-		setAccessibilityFocusAfterLayout(position, true);
+		layoutManager.scrollToPositionWithOffset(scrollPosition, 0);
+		setAccessibilityFocusAfterLayout(focusPosition, true);
 	}
 
 	@SuppressLint("AccessibilityFocus")
@@ -811,13 +928,18 @@ public class CommentListingFragment extends RRFragment
 
 			final RecyclerView.ViewHolder holder
 					= mRecyclerView.findViewHolderForAdapterPosition(position);
+			final LinearLayoutManager layoutManager
+					= (LinearLayoutManager)mRecyclerView.getLayoutManager();
 
-			if(holder != null) {
+			if(holder != null
+					&& position >= layoutManager.findFirstVisibleItemPosition()
+					&& position <= layoutManager.findLastVisibleItemPosition()) {
 				holder.itemView.performAccessibilityAction(
 						AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS,
 						null);
 
-			} else if(allowRetry && mRecyclerView.hasPendingAdapterUpdates()) {
+			} else if(allowRetry && position >= 0 && position < layoutManager.getItemCount()) {
+				layoutManager.scrollToPosition(position);
 				setAccessibilityFocusAfterLayout(position, false);
 			}
 		});
