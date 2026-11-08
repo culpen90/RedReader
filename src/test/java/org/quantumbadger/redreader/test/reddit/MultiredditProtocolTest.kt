@@ -244,8 +244,10 @@ class MultiredditProtocolTest {
 			"""{"json":{"errors":[["BAD_MULTI_NAME","Invalid name",""]]}}"""))
 		assertNotNull(RedditMutationCallbacks.errorInResponse("""{"error":403}"""))
 		assertNotNull(RedditMutationCallbacks.errorInResponse("""{"success":false}"""))
-		assertThrows(IllegalArgumentException::class.java) {
-			RedditMutationCallbacks.errorInResponse("<html>login</html>")
+		for (invalid in listOf("<html>login</html>", "null", "true", "\"ok\"")) {
+			assertThrows(IllegalArgumentException::class.java) {
+				RedditMutationCallbacks.errorInResponse(invalid)
+			}
 		}
 	}
 

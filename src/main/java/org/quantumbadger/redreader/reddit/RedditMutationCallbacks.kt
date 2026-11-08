@@ -86,7 +86,11 @@ class RedditMutationCallbacks(
 		@JvmStatic
 		fun errorInResponse(response: String): String? {
 			if (response.isBlank()) return null
-			return findError(Json.parseToJsonElement(response))
+			val parsed = Json.parseToJsonElement(response)
+			// JsonElement parsing accepts unquoted primitive tokens, including an HTML
+			// login page. Reddit mutation envelopes must be objects or arrays.
+			require(parsed is JsonObject || parsed is JsonArray) { "Expected a Reddit API envelope" }
+			return findError(parsed)
 		}
 
 		private fun findError(value: JsonElement): String? = when (value) {
