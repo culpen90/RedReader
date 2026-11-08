@@ -37,11 +37,13 @@ import org.quantumbadger.redreader.cache.downloadstrategy.DownloadStrategyAlways
 import org.quantumbadger.redreader.cache.downloadstrategy.DownloadStrategyIfNotCached
 import org.quantumbadger.redreader.common.Constants
 import org.quantumbadger.redreader.common.General
+import org.quantumbadger.redreader.common.GenericFactory
 import org.quantumbadger.redreader.common.Priority
 import org.quantumbadger.redreader.common.RRError
 import org.quantumbadger.redreader.common.SharedPrefsWrapper
 import org.quantumbadger.redreader.common.UriString
-import org.quantumbadger.redreader.http.FailedRequestBody
+import org.quantumbadger.redreader.common.datastream.SeekableInputStream
+import org.quantumbadger.redreader.common.time.TimestampUTC
 import org.quantumbadger.redreader.http.HTTPBackend
 import org.quantumbadger.redreader.http.PostField
 import org.quantumbadger.redreader.http.body.HTTPRequestBody
@@ -49,6 +51,7 @@ import org.quantumbadger.redreader.http.okhttp.OKHTTPBackend
 import org.quantumbadger.redreader.reddit.RedditMutationCallbacks
 import org.quantumbadger.redreader.reddit.api.MultiredditApi
 import org.quantumbadger.redreader.reddit.api.MultiredditTarget
+import org.quantumbadger.redreader.reddit.api.RedditOAuth
 import org.quantumbadger.redreader.reddit.things.SubredditCanonicalId
 import org.quantumbadger.redreader.reddit.url.MultiredditPostListURL
 import org.quantumbadger.redreader.reddit.url.RedditURLParser
@@ -56,8 +59,9 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.util.ReflectionHelpers
-import java.io.InputStream
+import java.io.IOException
 import java.net.URLDecoder
+import java.util.UUID
 import java.util.concurrent.atomic.AtomicReference
 
 @RunWith(RobolectricTestRunner::class)
@@ -135,8 +139,8 @@ class MultiredditProtocolTest {
 
 	@Test
 	fun otherOwnersCannotBeMutatedEvenWithTheSameMultiName() {
-		val url = RedditURLParser.parse(android.net.Uri.parse("https://reddit.com/user/Bob/m/news"))
-			.asMultiredditPostListURL()
+		val url = requireNotNull(RedditURLParser.parse(
+			android.net.Uri.parse("https://reddit.com/user/Bob/m/news"))).asMultiredditPostListURL()
 		val target = MultiredditTarget.fromListing(alice, url)
 		assertEquals("bob", target.owner)
 		assertFalse(target.isOwnedBy(alice))
@@ -269,23 +273,27 @@ class MultiredditProtocolTest {
 		try {
 			val body = if(method == HTTPBackend.Method.POST || method == HTTPBackend.Method.PUT)
 				HTTPRequestBody.PostFields(PostField("model", """{"name":"android"}""")) else null
-			val request = CacheRequest.newUncachedRequest(
-				UriString("https://example.org/api/multi/user/alice/m/news/r/android"),
-				anonymous, method, body, app, callbacks)
-			val download = CacheDownload(request, null)
-			val wire = ReflectionHelpers.getField<HTTPBackend.Request>(download, "mRequest")
-			wire.addHeader("Authorization", "bearer fixture-only")
+			val account = RedditAccount("Alice", null, 0, null)
+			account.setAccessToken(RedditOAuth.AccessToken("fixture-only"))
 			var success: String? = null
 			var failure: Int? = null
-			wire.executeInThisThread(object : HTTPBackend.Listener {
-				override fun onSuccess(mimetype: String?, bodyBytes: Long?, body: InputStream?) {
-					success = body?.bufferedReader()?.readText()
-				}
-				override fun onError(type: CacheRequest.RequestFailureType, exception: Throwable?,
-					httpStatus: Int?, body: FailedRequestBody?) {
-					failure = httpStatus
-				}
-			})
+			val request = CacheRequest.newUncachedRequest(
+				UriString("https://example.org/api/multi/user/alice/m/news/r/android"),
+				account, method, body, app, object : CacheRequestCallbacks {
+					override fun onDataStreamComplete(
+						streamFactory: GenericFactory<SeekableInputStream, IOException>,
+						timestamp: TimestampUTC,
+						session: UUID,
+						fromCache: Boolean,
+						mimetype: String?
+					) {
+						success = streamFactory.create().use { it.bufferedReader().readText() }
+					}
+					override fun onFailure(error: RRError) {
+						failure = error.httpStatus
+					}
+				})
+			CacheDownload(request, null).doDownload()
 			val outgoing = sent!!
 			val encoded = Buffer().also { outgoing.body?.writeTo(it) }.readUtf8()
 			return Exchange(outgoing.method, outgoing.url.encodedPath,
