@@ -138,6 +138,9 @@ public final class CacheDownload extends PrioritisedCachedThreadPool.Task {
 	// chooseGrowthPlan), rather than doubling their way up.
 	private static final int DEFAULT_INITIAL_BUFFER_SIZE = 64 * 1024;
 	private static final long MAX_PREALLOCATED_BUFFER_SIZE = 256L * 1024 * 1024;
+	// A source-only gallery may point at the original image. Bound compressed bytes as
+	// well as decoded pixels, including when Content-Length is absent or dishonest.
+	public static final int MAX_INLINE_PREVIEW_BYTES = 8 * 1024 * 1024;
 
 	private static final int COMMENT_LIST_INITIAL_BUFFER_SIZE = 128 * 1024;
 	private static final int COMMENT_LIST_SECOND_BUFFER_SIZE = 600 * 1024;
@@ -145,6 +148,17 @@ public final class CacheDownload extends PrioritisedCachedThreadPool.Task {
 	// Growth plans are shared, never copied: MemoryDataStream only reads them
 	private static final int[] NO_GROWTH_PLAN = new int[0];
 	private static final int[] COMMENT_LIST_GROWTH_PLAN = {COMMENT_LIST_SECOND_BUFFER_SIZE};
+	private static final int[] INLINE_PREVIEW_GROWTH_PLAN = {
+			256 * 1024, 512 * 1024, 1024 * 1024, 2 * 1024 * 1024,
+			4 * 1024 * 1024, MAX_INLINE_PREVIEW_BYTES};
+
+	static void checkDownloadSize(final int fileType, final long bytes) throws IOException {
+		if(fileType == Constants.FileType.INLINE_IMAGE_PREVIEW
+				&& bytes > MAX_INLINE_PREVIEW_BYTES) {
+			throw new IOException("Inline image preview exceeds "
+					+ MAX_INLINE_PREVIEW_BYTES + " bytes");
+		}
+	}
 
 	private static boolean isUsableContentLength(@Nullable final Long reportedContentLength) {
 		return reportedContentLength != null
@@ -156,7 +170,9 @@ public final class CacheDownload extends PrioritisedCachedThreadPool.Task {
 			@Nullable final Long reportedContentLength,
 			final int fileType) {
 
-		if(isUsableContentLength(reportedContentLength)) {
+		if(isUsableContentLength(reportedContentLength)
+				&& (fileType != Constants.FileType.INLINE_IMAGE_PREVIEW
+						|| reportedContentLength <= MAX_INLINE_PREVIEW_BYTES)) {
 			return (int)(long)reportedContentLength;
 		}
 
@@ -184,6 +200,12 @@ public final class CacheDownload extends PrioritisedCachedThreadPool.Task {
 	public static int[] chooseGrowthPlan(
 			@Nullable final Long reportedContentLength,
 			final int fileType) {
+
+		if(fileType == Constants.FileType.INLINE_IMAGE_PREVIEW) {
+			// Keep every reallocation inside the byte limit, even after a small or
+			// inaccurate declared length caused an irregular initial capacity.
+			return INLINE_PREVIEW_GROWTH_PLAN;
+		}
 
 		if(isUsableContentLength(reportedContentLength)) {
 			return NO_GROWTH_PLAN;
@@ -287,6 +309,16 @@ public final class CacheDownload extends PrioritisedCachedThreadPool.Task {
 					return;
 				}
 
+				try {
+					if(bodyBytes != null) {
+						checkDownloadSize(mInitiator.fileType, bodyBytes);
+					}
+				} catch(final IOException e) {
+					General.closeSafely(is);
+					onError(CacheRequest.RequestFailureType.CONNECTION, e, null, null);
+					return;
+				}
+
 				if(mInitiator.precache && mInitiator.cache) {
 					downloadToCacheFile(mimetype, bodyBytes, is);
 				} else {
@@ -322,6 +354,7 @@ public final class CacheDownload extends PrioritisedCachedThreadPool.Task {
 			while((bytesRead = tryReadFully(is, buf)) > 0) {
 
 				totalBytesRead += bytesRead;
+				checkDownloadSize(mInitiator.fileType, totalBytesRead);
 
 				writableCacheFile.writeChunk(buf, 0, bytesRead);
 
@@ -397,6 +430,7 @@ public final class CacheDownload extends PrioritisedCachedThreadPool.Task {
 			while((bytesRead = tryReadFully(is, buf)) > 0) {
 
 				totalBytesRead += bytesRead;
+				checkDownloadSize(mInitiator.fileType, totalBytesRead);
 
 				stream.writeBytes(buf, 0, bytesRead);
 

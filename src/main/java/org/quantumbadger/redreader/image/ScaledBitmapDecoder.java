@@ -82,7 +82,7 @@ public final class ScaledBitmapDecoder {
 
 		int sampleSize = 1;
 
-		while(scale * (double)(sampleSize * 2) <= 1.0) {
+		while(sampleSize <= Integer.MAX_VALUE / 2 && scale * ((double)sampleSize * 2) <= 1.0) {
 			sampleSize *= 2;
 		}
 

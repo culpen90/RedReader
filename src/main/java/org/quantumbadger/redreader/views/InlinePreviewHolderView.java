@@ -130,9 +130,9 @@ public final class InlinePreviewHolderView extends FrameLayout {
 
 		final int width = MeasureSpec.getSize(widthMeasureSpec);
 
-		final int height = Math.max(1, Math.min(
-				InlinePreviewLoader.getMaxPreviewHeightPx(getDisplayAreaHeightPx()),
-				(int)(((long)width * mImageHeightPx) / mImageWidthPx)));
+		final int height = (int)Math.max(1L, Math.min(
+				(long)InlinePreviewLoader.getMaxPreviewHeightPx(getDisplayAreaHeightPx()),
+				((long)width * mImageHeightPx) / mImageWidthPx));
 
 		super.onMeasure(
 				MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY),

@@ -31,6 +31,7 @@ public abstract class RedditListingManager {
 
 	private final GroupedRecyclerViewAdapter mAdapter = new GroupedRecyclerViewAdapter(7);
 	private LinearLayoutManager mLayoutManager;
+	private boolean mPreloadEnabled = true;
 
 	private static final int GROUP_HEADER = 0;
 	private static final int GROUP_NOTIFICATIONS = 1;
@@ -145,7 +146,8 @@ public abstract class RedditListingManager {
 
 		General.checkThisIsUIThread();
 
-		if(mLayoutManager == null) {
+		if(!mPreloadEnabled || mLayoutManager == null) {
+			clearPreloadWindow();
 			return;
 		}
 
@@ -163,6 +165,13 @@ public abstract class RedditListingManager {
 		General.checkThisIsUIThread();
 		updatePreloadWindow();
 		mAdapter.refreshPreloadWindow();
+	}
+
+	/** Detached listings must not reactivate previews when late data callbacks arrive. */
+	public void setPreloadEnabled(final boolean enabled) {
+		General.checkThisIsUIThread();
+		mPreloadEnabled = enabled;
+		updatePreloadWindow();
 	}
 
 	public void clearPreloadWindow() {

@@ -2133,6 +2133,7 @@
 	<string name="multireddit_added">Added r/%1$s to %2$s</string>
 	<string name="multireddit_add_failed">Unable to add subreddit. Check the name and retry.</string>
 	<string name="action_add_to_multireddit">Add to multireddit</string>
+	<string name="mark_inbox_as_read_when_back">Mark viewed messages read when leaving</string>
 	<string name="delete_multireddit">Delete multireddit</string>
 	<string name="multireddit_delete_confirmation">Delete %1$s? This removes the multireddit and its list of subreddits.</string>
 	<string name="multireddit_deleted">Deleted %1$s</string>
@@ -2140,6 +2141,14 @@
 	<string name="pref_menus_multireddits_header">Multireddits</string>
 	<string name="pref_menus_multireddits_context_items_key" translatable="false">pref_menus_multireddit_context_items</string>
 	<string name="pref_menus_multireddits_context_items_title">Action menu items</string>
+	<string name="pref_layout_mode_key" translatable="false">pref_layout_mode</string>
+	<string name="pref_layout_category_title">Post layout</string>
+	<string name="pref_layout_mode_title">Layout mode</string>
+	<string name="pref_layout_mode_thumbnails">Thumbnails</string>
+	<string name="pref_layout_mode_alwayspreview">Always preview</string>
+	<string name="pref_layout_mode_card">Card</string>
+	<string name="pref_layout_mode_summary">%1$s. Inline image network, NSFW and spoiler settings still apply.</string>
+	<string name="post_image">Post image</string>
 	<string name="remove_subreddit_from_multireddit">Remove subreddit from multireddit</string>
 	<string name="multireddit_remove_button">Remove</string>
 	<string name="multireddit_members_retry">Reload members</string>
@@ -2150,5 +2159,4 @@
 	<string name="multireddit_members_failed">Unable to load or update this multireddit. Reload members to retry.</string>
 	<string name="multireddit_removing">Removing subreddit…</string>
 	<string name="multireddit_removed">Removed r/%1$s from %2$s</string>
-	<string name="mark_inbox_as_read_when_back">Mark viewed messages read when leaving</string>
 </resources>

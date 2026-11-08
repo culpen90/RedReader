@@ -67,6 +67,7 @@ import java.util.UUID;
 public final class InlinePreviewLoader {
 
 	private static final String TAG = "InlinePreviewLoader";
+	private static final int MAX_DECODE_HEIGHT_PX = 3000;
 
 	public enum State {
 		NOT_LOADED,
@@ -129,7 +130,8 @@ public final class InlinePreviewLoader {
 	 * that a post never takes up so much of the list that it is hard to scroll past.
 	 */
 	public static int getMaxPreviewHeightPx(final int displayAreaHeightPx) {
-		return Math.max(1, (Math.max(400, displayAreaHeightPx) * 7) / 8);
+		return displayAreaHeightPx > 0
+				? Math.max(1, (int)(((long)displayAreaHeightPx * 7) / 8)) : 350;
 	}
 
 	/**
@@ -148,7 +150,8 @@ public final class InlinePreviewLoader {
 		final Rect windowVisibleDisplayFrame
 				= DisplayUtils.getWindowVisibleDisplayFrame(activity);
 
-		final int windowWidth = Math.max(1, windowVisibleDisplayFrame.width());
+		final int windowWidth = windowVisibleDisplayFrame.width() > 0
+				? windowVisibleDisplayFrame.width() : 720;
 
 		// Bounded to keep the memory used by each preview reasonable
 		final int boxWidth = Math.min(1080, Math.max(720, windowWidth));
@@ -165,14 +168,15 @@ public final class InlinePreviewLoader {
 		// height to decode within. This is only an estimate of the size the image will be
 		// displayed at, as the list is not necessarily as large as the window: the post is
 		// narrower in the two pane tablet layout, and shorter wherever there is a toolbar.
-		// Both make this an overestimate, which costs a little memory but never quality.
-		final int maxBoxHeight = Math.max(1, (int)(
+		// Both make this an overestimate. The absolute height ceiling also bounds memory
+		// on unusually tall windows and while initial window geometry is unavailable.
+		final long maxBoxHeight = Math.max(1L, Math.min(MAX_DECODE_HEIGHT_PX,
 				((long)getMaxPreviewHeightPx(windowVisibleDisplayFrame.height()) * boxWidth)
 						/ windowWidth));
 
-		final int boxHeight = Math.max(1, Math.min(
+		final int boxHeight = (int)Math.max(1L, Math.min(
 				maxBoxHeight,
-				(int)(((long)preview.height * boxWidth) / preview.width)));
+				((long)preview.height * boxWidth) / preview.width));
 
 		return new PreviewDetails(
 				preview.url,
@@ -266,6 +270,13 @@ public final class InlinePreviewLoader {
 		}
 	}
 
+	/** Rechecks permission and decode bounds without replacing listener ownership. */
+	@UiThread
+	public void refresh() {
+		General.checkThisIsUIThread();
+		update();
+	}
+
 	private void update() {
 
 		// A preview is held in memory while the post is either near the visible area of the
@@ -279,6 +290,11 @@ public final class InlinePreviewLoader {
 		final PreviewDetails details = mDetailsSource.calculatePreviewDetails(mActivity);
 
 		if(details == null) {
+			final boolean changed = mState != State.NOT_LOADED || mRequest != null;
+			release();
+			if(changed) {
+				notifyListener();
+			}
 			return;
 		}
 
