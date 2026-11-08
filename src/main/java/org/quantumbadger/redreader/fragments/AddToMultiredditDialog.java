@@ -154,7 +154,8 @@ public final class AddToMultiredditDialog {
 				activity, account, subreddit, operations, dialog, input, status);
 		dialog.setOnDismissListener(ignored -> controller.close());
 		dialog.setOnShowListener(ignored -> {
-			dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> controller.submit());
+			dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+					.setOnClickListener(v -> controller.submit());
 			dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v -> controller.load());
 			controller.load();
 		});
@@ -293,7 +294,8 @@ public final class AddToMultiredditDialog {
 							}
 							mOperations.refresh(mAccount);
 							General.quickToast(mActivity, mActivity.getString(
-									R.string.multireddit_added, mSubreddit.getDisplayNameLowercase(),
+									R.string.multireddit_added,
+									mSubreddit.getDisplayNameLowercase(),
 									target.getDisplayPath()));
 							mDialog.dismiss();
 						}

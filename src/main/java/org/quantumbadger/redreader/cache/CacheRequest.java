@@ -287,7 +287,8 @@ public final class CacheRequest implements Comparable<CacheRequest> {
 					"User was null - set to empty string for anonymous");
 		}
 
-		if(!downloadStrategy.shouldDownloadWithoutCheckingCache() && method != HTTPBackend.Method.GET) {
+		if(!downloadStrategy.shouldDownloadWithoutCheckingCache()
+				&& method != HTTPBackend.Method.GET) {
 			throw new IllegalArgumentException(
 					"Should not perform cache lookup for mutating requests");
 		}
