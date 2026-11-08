@@ -40,6 +40,8 @@ class IndentView extends View {
 	private final int mHalfALine;
 
 	private final boolean mPrefDrawLines;
+	private final boolean mPrefColorfulLines;
+	private final int[] mIndentColors;
 
 	private float[] mLineBuffer;
 
@@ -68,11 +70,23 @@ class IndentView extends View {
 		{
 			final TypedArray attr = context.obtainStyledAttributes(new int[] {
 					R.attr.rrIndentBackgroundCol,
-					R.attr.rrIndentLineCol
+					R.attr.rrIndentLineCol,
+					R.attr.rrIndentLineCol1,
+					R.attr.rrIndentLineCol2,
+					R.attr.rrIndentLineCol3,
+					R.attr.rrIndentLineCol4,
+					R.attr.rrIndentLineCol5
 			});
 
 			rrIndentBackgroundCol = attr.getColor(0, General.COLOR_INVALID);
 			rrIndentLineCol = attr.getColor(1, General.COLOR_INVALID);
+			mIndentColors = new int[] {
+					attr.getColor(2, 0xFF6B8AC7),
+					attr.getColor(3, 0xFF5FA05F),
+					attr.getColor(4, 0xFFCD8500),
+					attr.getColor(5, 0xFFB8374A),
+					attr.getColor(6, 0xFF8E6FB8)
+			};
 
 			attr.recycle();
 		}
@@ -82,6 +96,7 @@ class IndentView extends View {
 		mPaint.setStrokeWidth(mPixelsPerLine);
 
 		mPrefDrawLines = PrefsUtility.pref_appearance_indentlines();
+		mPrefColorfulLines = PrefsUtility.pref_appearance_colorful_indentlines();
 	}
 
 	@Override
@@ -91,7 +106,14 @@ class IndentView extends View {
 
 		final int height = getMeasuredHeight();
 
-		if(mPrefDrawLines) {
+		if(mPrefColorfulLines) {
+			final int firstLine = mPrefDrawLines ? 0 : mIndent - 1;
+			for(int i = Math.max(0, firstLine); i < mIndent; i++) {
+				mPaint.setColor(mIndentColors[i % mIndentColors.length]);
+				final float x = (mPixelsPerIndent * (i + 1)) - mHalfALine;
+				canvas.drawLine(x, 0, x, height, mPaint);
+			}
+		} else if(mPrefDrawLines) {
 			// i keeps track of indentation, and
 			// l is to populate the float[] with line co-ordinates
 			int l = 0;

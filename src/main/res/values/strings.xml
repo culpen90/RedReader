@@ -2005,4 +2005,6 @@
 	<string name="pref_appearance_navbar_opacity_title">Navigation bar opacity</string>
 	<!-- Translators: navigation bar opacity option which picks an opacity based on the navigation bar colour -->
 	<string name="pref_appearance_navbar_opacity_option_auto">Automatic</string>
+	<string name="pref_appearance_colorful_indentlines_key" translatable="false">pref_appearance_colorful_indentlines</string>
+	<string name="pref_appearance_colorful_indentlines_title">Colorful comment indent bars</string>
 </resources>

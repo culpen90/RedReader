@@ -642,6 +642,10 @@ public final class PrefsUtility {
 				true);
 	}
 
+	public static boolean pref_appearance_colorful_indentlines() {
+		return getBoolean(R.string.pref_appearance_colorful_indentlines_key, false);
+	}
+
 	public static boolean pref_appearance_indentlines() {
 		return getBoolean(
 				R.string.pref_appearance_indentlines_key,

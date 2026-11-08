@@ -119,4 +119,10 @@
 	<attr name="rrIconMagnify" format="reference" />
 	<attr name="rrIconAccountSearch" format="reference" />
 
+	<attr name="rrIndentLineCol1" format="color" />
+	<attr name="rrIndentLineCol2" format="color" />
+	<attr name="rrIndentLineCol3" format="color" />
+	<attr name="rrIndentLineCol4" format="color" />
+	<attr name="rrIndentLineCol5" format="color" />
+
 </resources>
