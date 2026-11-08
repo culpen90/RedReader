@@ -163,6 +163,75 @@ object MultiredditApi {
 	}
 
 	@JvmStatic
+	fun newOwnedNamesRequest(
+		context: Context,
+		account: RedditAccount,
+		listener: MembersListener
+	): CacheRequest {
+		require(!account.isAnonymous) { "A signed-in account is required" }
+		return CacheRequest.newUncachedRequest(
+			Constants.Reddit.getUri(Constants.Reddit.PATH_MULTIREDDITS_MINE), account,
+			HTTPBackend.Method.GET, null, context, object : CacheRequestCallbacks {
+				override fun onFailure(error: RRError) {
+					AndroidCommon.runOnUiThread { listener.onFailure(error) }
+				}
+
+				override fun onDataStreamComplete(
+					streamFactory: GenericFactory<SeekableInputStream, IOException>,
+					timestamp: TimestampUTC,
+					session: UUID,
+					fromCache: Boolean,
+					mimetype: String?
+				) {
+					try {
+						val text = streamFactory.create().use { General.readWholeStreamAsUTF8(it) }
+						val names = parseOwnedNames(text, account)
+						AndroidCommon.runOnUiThread { listener.onSuccess(names) }
+					} catch (error: Exception) {
+						onFailure(RRError(
+							title = context.getString(R.string.api_action_failed_title),
+							message = context.getString(R.string.api_action_invalid_response),
+							t = error
+						))
+					}
+				}
+			})
+	}
+
+	@JvmStatic
+	fun parseOwnedNames(response: String, account: RedditAccount): List<String> {
+		require(RedditMutationCallbacks.errorInResponse(response) == null) {
+			"The API returned an error"
+		}
+		val result = Json.parseToJsonElement(response) as? JsonArray
+			?: throw IllegalArgumentException("Expected a list of multireddits")
+		return result.mapNotNull { item ->
+			val data = (item as? JsonObject)?.get("data") as? JsonObject
+				?: throw IllegalArgumentException("Missing multireddit data")
+			val name = (data["name"] as? JsonPrimitive)?.contentOrNull
+				?: throw IllegalArgumentException("Missing multireddit name")
+			val owner = (data["owner"] as? JsonPrimitive)?.contentOrNull
+			val path = (data["path"] as? JsonPrimitive)?.contentOrNull
+			val pathOwner = path?.let {
+				val segments = Uri.parse(it).pathSegments
+				if (segments.size != 4 || segments[0] != "user" || segments[2] != "m"
+					|| !segments[3].equals(name, ignoreCase = true)) {
+					throw IllegalArgumentException("Invalid multireddit path")
+				}
+				segments[1]
+			}
+			require(owner != null || pathOwner != null) { "Missing multireddit owner" }
+			if (owner != null && !owner.equals(account.canonicalUsername, ignoreCase = true)
+				|| pathOwner != null && !pathOwner.equals(account.canonicalUsername, ignoreCase = true)
+			) {
+				null
+			} else {
+				MultiredditTarget.forName(account, name).name
+			}
+		}.distinct().sortedWith(String.CASE_INSENSITIVE_ORDER)
+	}
+
+	@JvmStatic
 	fun parseMembers(response: String): List<String> {
 		require(RedditMutationCallbacks.errorInResponse(response) == null) {
 			"The API returned an error"
@@ -181,16 +250,20 @@ object MultiredditApi {
 	}
 
 	@JvmStatic
-	fun subredditName(subreddit: SubredditCanonicalId): String {
+	fun canAddSubreddit(subreddit: SubredditCanonicalId): Boolean {
 		val name = subreddit.displayNameLowercase
-		require(subreddit.toString().startsWith("/r/") && name.matches(Regex("[a-z0-9_]+"))) {
-			"Expected one ordinary subreddit"
-		}
-		require(name !in setOf("all", "popular", "friends", "mod", "random", "randnsfw")) {
-			"A special feed is not a subreddit"
-		}
-		return name
+		return subreddit.toString().startsWith("/r/") && subredditPattern.matches(name)
+			&& name !in specialFeeds
 	}
+
+	@JvmStatic
+	fun subredditName(subreddit: SubredditCanonicalId): String {
+		require(canAddSubreddit(subreddit)) { "Expected one ordinary subreddit" }
+		return subreddit.displayNameLowercase
+	}
+
+	private val subredditPattern = Regex("[a-z0-9_]+")
+	private val specialFeeds = setOf("all", "popular", "friends", "mod", "random", "randnsfw")
 
 	private fun apiUrl(target: MultiredditTarget, subreddit: String?): UriString {
 		val path = Uri.Builder().encodedPath("/api/multi")

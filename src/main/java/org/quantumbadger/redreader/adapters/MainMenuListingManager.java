@@ -50,6 +50,8 @@ import org.quantumbadger.redreader.common.ScreenreaderPronunciation;
 import org.quantumbadger.redreader.common.SharedPrefsWrapper;
 import org.quantumbadger.redreader.common.UriString;
 import org.quantumbadger.redreader.fragments.MainMenuFragment;
+import org.quantumbadger.redreader.fragments.AddToMultiredditDialog;
+import org.quantumbadger.redreader.reddit.api.MultiredditApi;
 import org.quantumbadger.redreader.receivers.announcements.Announcement;
 import org.quantumbadger.redreader.receivers.announcements.AnnouncementDownloader;
 import org.quantumbadger.redreader.reddit.api.RedditSubredditSubscriptionManager;
@@ -118,7 +120,8 @@ public class MainMenuListingManager {
 		UNPIN(R.string.unpin_subreddit),
 		SUBSCRIBE(R.string.options_subscribe),
 		UNSUBSCRIBE(R.string.options_unsubscribe),
-		EXTERNAL(R.string.action_external);
+		EXTERNAL(R.string.action_external),
+		ADD_TO_MULTIREDDIT(R.string.action_add_to_multireddit);
 
 		public final int descriptionResId;
 
@@ -730,6 +733,8 @@ public class MainMenuListingManager {
 			return;
 		}
 
+		final RedditAccount capturedAccount = RedditAccountManager.getInstance(activity)
+				.getDefaultAccount();
 		final ArrayList<SubredditMenuItem> menu = new ArrayList<>();
 		if(itemPref.contains(SubredditAction.COPY_URL)) {
 			menu.add(new SubredditMenuItem(
@@ -814,6 +819,13 @@ public class MainMenuListingManager {
 			}
 		}
 
+		if(!capturedAccount.isAnonymous()
+				&& itemPref.contains(SubredditAction.ADD_TO_MULTIREDDIT)
+				&& MultiredditApi.canAddSubreddit(subreddit)) {
+			menu.add(new SubredditMenuItem(activity, R.string.action_add_to_multireddit,
+					SubredditAction.ADD_TO_MULTIREDDIT));
+		}
+
 		final String[] menuText = new String[menu.size()];
 
 		for(int i = 0; i < menuText.length; i++) {
@@ -822,10 +834,13 @@ public class MainMenuListingManager {
 
 		final MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(activity);
 
-		builder.setItems(menuText, (dialog, which) -> onSubredditActionMenuItemSelected(
-				subreddit,
-				activity,
-				menu.get(which).action));
+		builder.setItems(menuText, (dialog, which) -> {
+			if(menu.get(which).action == SubredditAction.ADD_TO_MULTIREDDIT) {
+				AddToMultiredditDialog.show(activity, capturedAccount, subreddit);
+			} else {
+				onSubredditActionMenuItemSelected(subreddit, activity, menu.get(which).action);
+			}
+		});
 
 		final AlertDialog alert = builder.create();
 		alert.setCanceledOnTouchOutside(true);

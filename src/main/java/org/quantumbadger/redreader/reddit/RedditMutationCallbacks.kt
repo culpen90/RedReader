@@ -97,7 +97,7 @@ class RedditMutationCallbacks(
 					errors != null && errors != JsonNull
 						&& (!(errors is JsonArray) || errors.isNotEmpty()) -> errors.toString()
 					error != null && error != JsonNull
-						&& (error !is JsonPrimitive || error.contentOrNull !in listOf("", "0")) ->
+						&& (error !is JsonPrimitive || error.contentOrNull !in listOf("", "0", "false")) ->
 						error.toString()
 					(value["success"] as? JsonPrimitive)?.booleanOrNull == false -> "success=false"
 					else -> value.values.firstNotNullOfOrNull { findError(it) }

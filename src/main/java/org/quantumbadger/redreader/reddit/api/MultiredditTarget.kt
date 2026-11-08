@@ -22,7 +22,7 @@ import org.quantumbadger.redreader.common.StringUtils
 import org.quantumbadger.redreader.reddit.url.MultiredditPostListURL
 
 /** The full identity of a multi, independent of the mutable default account. */
-data class MultiredditTarget private constructor(
+class MultiredditTarget private constructor(
 	@JvmField val owner: String,
 	@JvmField val name: String
 ) {

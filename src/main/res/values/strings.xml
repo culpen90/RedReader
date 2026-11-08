@@ -2117,4 +2117,17 @@
 	<string name="pref_menus_subreddit_combinations_header">Combined subreddits</string>
 	<string name="pref_menus_subreddit_combinations_context_items_key" translatable="false">pref_menus_subreddit_combinations_context_items</string>
 	<string name="pref_menus_subreddit_combinations_context_items_title">Action menu items</string>
+	<string name="multireddit_single_subreddit_required">Choose one subreddit to add.</string>
+	<string name="multireddit_choose_name">Choose a multireddit</string>
+	<string name="multireddit_add_title">Add r/%1$s to a multireddit of %2$s</string>
+	<string name="multireddit_add_button">Add</string>
+	<string name="multireddit_retry">Retry</string>
+	<string name="multireddit_loading_names">Loading your multireddits…</string>
+	<string name="multireddit_no_owned_names">Create a multireddit before adding subreddits.</string>
+	<string name="multireddit_names_failed">Unable to load your multireddits. Retry to continue.</string>
+	<string name="multireddit_select_owned_name">Select one of your multireddits.</string>
+	<string name="multireddit_adding">Adding subreddit…</string>
+	<string name="multireddit_added">Added r/%1$s to %2$s</string>
+	<string name="multireddit_add_failed">Unable to add subreddit. Check the name and retry.</string>
+	<string name="action_add_to_multireddit">Add to multireddit</string>
 </resources>
