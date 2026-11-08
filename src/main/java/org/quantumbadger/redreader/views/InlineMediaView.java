@@ -76,7 +76,8 @@ public final class InlineMediaView extends FrameLayout
 	private boolean mListening;
 	private int mLastVisibleWidth;
 	private int mLastVisibleHeight;
-	private long mNextPolicyRetryMs;
+	private long mNextPolicyCheckMs;
+	private boolean mPolicyAllowsLoading;
 
 	public static int getNaturalWidthPx(
 			@NonNull final Context context,
@@ -217,22 +218,22 @@ public final class InlineMediaView extends FrameLayout
 			return;
 		}
 
+		final long nowMs = SystemClock.uptimeMillis();
+		if(nowMs >= mNextPolicyCheckMs || (!mListening && mPolicyAllowsLoading)) {
+			mPolicyAllowsLoading = PrefsUtility.images_inline_comment_media()
+					.isEnabled(General.isConnectionWifi(mActivity));
+			mNextPolicyCheckMs = nowMs + 1000;
+		}
+
+		// Check before the unchanged-size fast path as well: an active download must
+		// stop if Wi-Fi disappears or the preference is disabled while it is visible.
+		if(!mPolicyAllowsLoading) {
+			stopListening();
+			return;
+		}
+
 		if(mListening && getWidth() == mLastVisibleWidth
 				&& getHeight() == mLastVisibleHeight) {
-			return;
-		}
-
-		final long nowMs = SystemClock.uptimeMillis();
-		if(nowMs < mNextPolicyRetryMs) {
-			return;
-		}
-
-		// Recheck the network gate before a fresh load; a thread parsed on Wi-Fi may
-		// still be open when the device switches to mobile data.
-		if(!PrefsUtility.images_inline_comment_media()
-				.isEnabled(General.isConnectionWifi(mActivity))) {
-			mNextPolicyRetryMs = nowMs + 1000;
-			stopListening();
 			return;
 		}
 

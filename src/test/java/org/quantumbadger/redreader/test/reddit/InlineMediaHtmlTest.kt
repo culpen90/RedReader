@@ -26,6 +26,7 @@ import org.quantumbadger.redreader.reddit.prepared.InlineMediaResolver
 import org.quantumbadger.redreader.reddit.prepared.bodytext.BodyElement
 import org.quantumbadger.redreader.reddit.prepared.bodytext.BodyElementInlineMedia
 import org.quantumbadger.redreader.reddit.prepared.bodytext.BodyElementLinkButton
+import org.quantumbadger.redreader.reddit.prepared.bodytext.BodyElementSpoilerButton
 import org.quantumbadger.redreader.reddit.prepared.bodytext.BodyElementTextSpanned
 import org.quantumbadger.redreader.reddit.prepared.bodytext.BodyElementVerticalSequence
 import org.quantumbadger.redreader.reddit.prepared.html.HtmlReader
@@ -180,4 +181,13 @@ class InlineMediaHtmlTest {
 		assertEquals(0, result.mediaCount)
 		assertEquals(1, result.linkButtonCount)
 	}
+
+	@Test
+	fun explicitSpoilerKeepsItsImageBehindTheRevealButton() {
+		val result = parse("<p><span class=\"md-spoiler-text\">$IMAGE_LINK</span></p>")
+		assertEquals(0, result.mediaCount)
+		assertEquals(1, result.count(BodyElementSpoilerButton::class.java))
+		assertEquals(1, result.collector!!.generated.size)
+	}
+
 }

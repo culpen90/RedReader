@@ -49,7 +49,7 @@ data class RedditComment(
 
 	// Whether the post this comment is on is NSFW. Only present outside comment threads,
 	// for example on a user's profile.
-	val over_18: Boolean = false,
+	val over_18: Boolean? = null,
 
 	val replies: RedditFieldReplies = RedditFieldReplies.None,
 

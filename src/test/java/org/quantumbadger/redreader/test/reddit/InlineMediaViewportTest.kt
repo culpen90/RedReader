@@ -35,6 +35,11 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.quantumbadger.redreader.R
 import org.quantumbadger.redreader.activities.ChangelogActivity
+import org.quantumbadger.redreader.account.RedditAccountManager
+import org.quantumbadger.redreader.cache.CacheRequest
+import org.quantumbadger.redreader.cache.downloadstrategy.DownloadStrategyIfNotCached
+import org.quantumbadger.redreader.common.Constants
+import org.quantumbadger.redreader.common.Priority
 import org.quantumbadger.redreader.common.General
 import org.quantumbadger.redreader.common.PrefsUtility
 import org.quantumbadger.redreader.common.SharedPrefsWrapper
@@ -88,6 +93,30 @@ class InlineMediaViewportTest {
 		val loader = InlinePreviewLoader(activity) { null }
 		ReflectionHelpers.setField(element, "mLoader", loader)
 		return Entry(InlineMediaView(activity, element), loader)
+	}
+
+	private fun pendingRequest(activity: ChangelogActivity, item: Entry): CacheRequest {
+		// Do not submit it: this tests cancellation of a request owned by the loader,
+		// without starting any network or cache background work.
+		val request = CacheRequest(
+			UriString("https://example.invalid/test.png"), RedditAccountManager.getAnon(),
+			null, Priority(Constants.Priority.INLINE_IMAGE_PREVIEW), DownloadStrategyIfNotCached.INSTANCE,
+			Constants.FileType.INLINE_IMAGE_PREVIEW, CacheRequest.DownloadQueueType.IMMEDIATE,
+			activity
+		) {}
+		ReflectionHelpers.setField(item.loader, "mRequest", request)
+		ReflectionHelpers.setField(item.loader, "mState", InlinePreviewLoader.State.LOADING)
+		return request
+	}
+
+	private fun setWifiConnected(connected: Boolean) {
+		val connectivity = app.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+		shadowOf(connectivity).setNetworkInfo(ConnectivityManager.TYPE_WIFI,
+			ShadowNetworkInfo.newInstance(
+				if (connected) NetworkInfo.DetailedState.CONNECTED else NetworkInfo.DetailedState.DISCONNECTED,
+				ConnectivityManager.TYPE_WIFI, 0, true, connected
+			)
+		)
 	}
 
 	private fun listening(entry: Entry): Boolean =
@@ -168,13 +197,7 @@ class InlineMediaViewportTest {
 			activity.setContentView(scroll)
 			layout(scroll)
 			assertFalse(listening(item))
-			val connectivity = app.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-			shadowOf(connectivity).setNetworkInfo(ConnectivityManager.TYPE_WIFI,
-				ShadowNetworkInfo.newInstance(
-					NetworkInfo.DetailedState.DISCONNECTED, ConnectivityManager.TYPE_WIFI,
-					0, true, false
-				)
-			)
+			setWifiConnected(false)
 			prefs.edit().putString(
 				app.getString(R.string.pref_images_inline_comment_media_key), "wifionly"
 			).commit()
@@ -185,4 +208,56 @@ class InlineMediaViewportTest {
 			controller.pause().stop().destroy()
 		}
 	}
+	@Test
+	fun anActiveImageIsReleasedWhenItsPolicyIsDisabled() {
+		val controller = Robolectric.buildActivity(ChangelogActivity::class.java).setup().visible()
+		try {
+			val activity = controller.get()
+			val item = entry(activity)
+			val scroll = ScrollView(activity).apply { addView(item.view) }
+			activity.setContentView(scroll)
+			layout(scroll)
+			assertTrue(listening(item))
+			val request = pendingRequest(activity, item)
+			ReflectionHelpers.setField(item.loader, "mBitmap",
+				Bitmap.createBitmap(10, 10, Bitmap.Config.ARGB_8888))
+			prefs.edit().putString(
+				app.getString(R.string.pref_images_inline_comment_media_key), "never"
+			).commit()
+			SystemClock.sleep(1001)
+			scroll.viewTreeObserver.dispatchOnPreDraw()
+			assertFalse(listening(item))
+			assertNull(item.loader.bitmap)
+			assertTrue(ReflectionHelpers.getField(request, "cancelled"))
+			assertEquals(InlinePreviewLoader.State.NOT_LOADED, item.loader.state)
+		} finally {
+			controller.pause().stop().destroy()
+		}
+	}
+
+	@Test
+	fun anActiveWifiOnlyImageIsCancelledAfterWifiDisconnects() {
+		val controller = Robolectric.buildActivity(ChangelogActivity::class.java).setup().visible()
+		try {
+			val activity = controller.get()
+			setWifiConnected(true)
+			prefs.edit().putString(
+				app.getString(R.string.pref_images_inline_comment_media_key), "wifionly"
+			).commit()
+			val item = entry(activity)
+			val scroll = ScrollView(activity).apply { addView(item.view) }
+			activity.setContentView(scroll)
+			layout(scroll)
+			assertTrue(listening(item))
+			val request = pendingRequest(activity, item)
+			setWifiConnected(false)
+			SystemClock.sleep(1001)
+			scroll.viewTreeObserver.dispatchOnPreDraw()
+			assertFalse(listening(item))
+			assertTrue(ReflectionHelpers.getField(request, "cancelled"))
+		} finally {
+			controller.pause().stop().destroy()
+		}
+	}
+
 }
