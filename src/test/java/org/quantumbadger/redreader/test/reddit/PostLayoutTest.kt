@@ -57,6 +57,9 @@ import org.quantumbadger.redreader.reddit.prepared.PostPreviewPolicy
 import org.quantumbadger.redreader.reddit.prepared.RedditParsedPost
 import org.quantumbadger.redreader.reddit.prepared.RedditPreparedPost
 import org.quantumbadger.redreader.settings.types.PostLayout
+import org.quantumbadger.redreader.settings.SettingsActivity
+import org.quantumbadger.redreader.settings.SettingsFragment
+import androidx.preference.ListPreference
 import org.quantumbadger.redreader.views.PostHeaderPreviewView
 import org.quantumbadger.redreader.views.RedditPostHeaderView
 import org.quantumbadger.redreader.views.RedditPostView
@@ -162,6 +165,31 @@ class PostLayoutTest {
 		prefs.edit().putInt(key, 7).commit()
 		assertEquals(PostLayout.THUMBNAILS, PrefsUtility.post_layout())
 		assertTrue(PrefsUtility.isRefreshRequired(app, key))
+	}
+
+	@Test
+	fun restoredInvalidLayoutValuesAreNormalizedBeforeTheActualSettingsScreenInflates() {
+		val key = app.getString(R.string.pref_layout_mode_key)
+		for (invalid in listOf<Any>(7, "unrecognized-mode")) {
+			if (invalid is Int) prefs.edit().putInt(key, invalid).commit()
+			else prefs.edit().putString(key, invalid as String).commit()
+			val controller = Robolectric.buildActivity(SettingsActivity::class.java).setup().visible()
+			try {
+				val activity = controller.get()
+				activity.onPanelSelected("images_video")
+				activity.supportFragmentManager.executePendingTransactions()
+				val fragment = activity.supportFragmentManager.findFragmentById(
+					R.id.single_fragment_container) as SettingsFragment
+				val preference = fragment.findPreference<ListPreference>(key)!!
+				assertEquals("thumbnails", preference.value)
+				assertEquals("thumbnails", prefs.getString(key, null))
+				assertNotNull(preference.entry)
+				assertTrue(preference.summary.toString().contains(preference.entry.toString()))
+				preference.value = "card"
+				assertEquals(PostLayout.CARD, PrefsUtility.post_layout())
+				assertTrue(preference.summary.toString().contains(preference.entry.toString()))
+			} finally { controller.pause().stop().destroy() }
+		}
 	}
 
 	@Test
@@ -328,6 +356,10 @@ class PostLayoutTest {
 		holder.measure(View.MeasureSpec.makeMeasureSpec(400, View.MeasureSpec.EXACTLY),
 			View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
 		assertEquals(400, holder.measuredWidth)
+		assertEquals(262, holder.measuredHeight)
+		holder.setImageSize(50, 100000000)
+		holder.measure(View.MeasureSpec.makeMeasureSpec(1080, View.MeasureSpec.EXACTLY),
+			View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
 		assertEquals(262, holder.measuredHeight)
 	}
 	@Test

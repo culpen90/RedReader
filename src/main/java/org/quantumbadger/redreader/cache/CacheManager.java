@@ -32,6 +32,7 @@ import com.github.luben.zstd.ZstdOutputStream;
 import org.quantumbadger.redreader.account.RedditAccount;
 import org.quantumbadger.redreader.activities.BugReportActivity;
 import org.quantumbadger.redreader.common.FileUtils;
+import org.quantumbadger.redreader.common.Constants;
 import org.quantumbadger.redreader.common.General;
 import org.quantumbadger.redreader.common.GenericFactory;
 import org.quantumbadger.redreader.common.Optional;
@@ -755,6 +756,22 @@ public final class CacheManager {
 				dbManager.delete(entry.id);
 
 				return;
+			}
+
+			if(request.fileType == Constants.FileType.INLINE_IMAGE_PREVIEW) {
+				try {
+					CacheDownload.checkDownloadSize(request.fileType, cacheFile.length());
+					// Image cache files are raw and read directly from disk. Do not open
+					// a compressed entry for this URL through the eager memory reader.
+					if(entry.cacheCompressionType != CacheCompressionType.NONE) {
+						throw new IOException("Inline image preview cache is not a raw image");
+					}
+				} catch(final IOException e) {
+					request.notifyFailure(General.getGeneralErrorForFailure(
+							context, CacheRequest.RequestFailureType.STORAGE,
+							e, null, request.url, Optional.empty()));
+					return;
+				}
 			}
 
 			mDiskCacheThreadPool.add(new PrioritisedCachedThreadPool.Task() {
