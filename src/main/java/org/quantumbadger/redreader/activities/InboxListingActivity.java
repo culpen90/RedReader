@@ -442,7 +442,9 @@ public final class InboxListingActivity extends ViewsBaseActivity {
 
 									itemHandler.sendMessage(General.handlerMessage(
 											0,
-											new InboxItem(message, Boolean.TRUE.equals(messageRaw.getNew()))));
+											new InboxItem(
+													message,
+													Boolean.TRUE.equals(messageRaw.getNew()))));
 
 									if(message.src.getReplies()
 											instanceof RedditFieldReplies.Some) {
@@ -513,7 +515,8 @@ public final class InboxListingActivity extends ViewsBaseActivity {
 
 						AndroidCommon.runOnUiThread(() -> {
 							if(!mDestroyed) {
-								notifications.addView(new ErrorView(InboxListingActivity.this, error));
+								notifications.addView(new ErrorView(
+										InboxListingActivity.this, error));
 							}
 						});
 					}
@@ -532,7 +535,8 @@ public final class InboxListingActivity extends ViewsBaseActivity {
 				mLocationOnScreen[0] + mRecyclerView.getPaddingLeft(),
 				mLocationOnScreen[1] + mRecyclerView.getPaddingTop(),
 				mLocationOnScreen[0] + mRecyclerView.getWidth() - mRecyclerView.getPaddingRight(),
-				mLocationOnScreen[1] + mRecyclerView.getHeight() - mRecyclerView.getPaddingBottom());
+				mLocationOnScreen[1] + mRecyclerView.getHeight()
+						- mRecyclerView.getPaddingBottom());
 		if(!mVisibleBounds.intersect(mContentBounds)) {
 			return;
 		}
