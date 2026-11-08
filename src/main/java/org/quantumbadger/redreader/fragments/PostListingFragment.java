@@ -60,6 +60,7 @@ import org.quantumbadger.redreader.common.General;
 import org.quantumbadger.redreader.common.GenericFactory;
 import org.quantumbadger.redreader.common.LinkHandler;
 import org.quantumbadger.redreader.common.PrefsUtility;
+import org.quantumbadger.redreader.common.PostFilter;
 import org.quantumbadger.redreader.common.Priority;
 import org.quantumbadger.redreader.common.RRError;
 import org.quantumbadger.redreader.common.TimestampBound;
@@ -867,6 +868,10 @@ public class PostListingFragment extends RRFragment
 							// Grab this so we don't have to pull from the prefs every post
 							final HashSet<SubredditCanonicalId> blockedSubreddits
 									= new HashSet<>(PrefsUtility.pref_blocked_subreddits());
+							final PostFilter postFilter = new PostFilter(
+									PrefsUtility.pref_hidden_post_title_terms(),
+									PrefsUtility.pref_hidden_post_title_regexes(),
+									PrefsUtility.pref_blocked_subreddit_regexes());
 
 							Log.i(TAG, "Inline previews: "
 									+ (inlinePreviews ? "ON" : "OFF"));
@@ -907,9 +912,17 @@ public class PostListingFragment extends RRFragment
 
 								mAfter = post.getName();
 
+								if(postFilter.hidesTitle(post.getTitle() == null
+										? null : post.getTitle().getDecoded())) {
+									mPostsNotShown = true;
+									continue;
+								}
+
+								final String subredditName = post.getSubreddit().getDecoded();
 								final boolean isPostBlocked = subredditFilteringEnabled
-										&& blockedSubreddits.contains(
-										new SubredditCanonicalId(post.getSubreddit().getDecoded()));
+										&& (postFilter.blocksSubreddit(subredditName)
+										|| blockedSubreddits.contains(
+												new SubredditCanonicalId(subredditName)));
 
 								if(!isPostBlocked
 										&& (!post.getOver_18() || isNsfwAllowed)
