@@ -69,7 +69,7 @@ class IndentColorPreferenceTest {
 		val view = IndentView(app)
 		view.layoutParams = ViewGroup.LayoutParams(1, 30)
 		view.setIndentation(3)
-		val width = General.dpToPixels(app, 30)
+		val width = General.dpToPixels(app, 30f)
 		view.measure(
 			View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
 			View.MeasureSpec.makeMeasureSpec(30, View.MeasureSpec.EXACTLY)
@@ -77,7 +77,7 @@ class IndentColorPreferenceTest {
 		view.layout(0, 0, width, 30)
 		val bitmap = Bitmap.createBitmap(width, 30, Bitmap.Config.ARGB_8888)
 		view.draw(Canvas(bitmap))
-		return (1..3).map { bitmap.getPixel(General.dpToPixels(app, it * 10) - 1, 15) }
+		return (1..3).map { bitmap.getPixel(General.dpToPixels(app, it * 10f) - 1, 15) }
 	}
 
 	@Test
