@@ -104,6 +104,8 @@ class RedditParsedPost(
 
 	val isSelfPost = src.is_self
 
+	val mediaType = PostMediaType.forPost(src)
+
 	val upvotePercentage = src.upvote_ratio?.times(100.0)?.toInt()
 
     init {

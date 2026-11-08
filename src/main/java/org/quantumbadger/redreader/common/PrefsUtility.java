@@ -40,6 +40,7 @@ import org.quantumbadger.redreader.adapters.MainMenuListingManager;
 import org.quantumbadger.redreader.common.time.TimeDuration;
 import org.quantumbadger.redreader.fragments.MainMenuFragment;
 import org.quantumbadger.redreader.io.WritableHashSet;
+import org.quantumbadger.redreader.reddit.prepared.PostMediaType;
 import org.quantumbadger.redreader.reddit.PostCommentSort;
 import org.quantumbadger.redreader.reddit.PostSort;
 import org.quantumbadger.redreader.reddit.UserCommentSort;
@@ -116,6 +117,16 @@ public final class PrefsUtility {
 		sharedPrefs.edit().putBoolean(getPrefKey(id), newValue).apply();
 	}
 
+	public static boolean pref_media_type(final PostMediaType type) {
+		return sharedPrefs.getBoolean("pref_media_type_" + type.getPreferenceValue(), true);
+	}
+
+	public static void pref_media_type_set(final PostMediaType type, final boolean enabled) {
+		sharedPrefs.edit()
+				.putBoolean("pref_media_type_" + type.getPreferenceValue(), enabled)
+				.apply();
+	}
+
 	@SuppressWarnings("unused")
 	private static long getLong(
 			final int id,
@@ -133,6 +144,7 @@ public final class PrefsUtility {
 
 	public static boolean isRefreshRequired(final Context context, final String key) {
 		return key.startsWith("pref_appearance")
+				|| key.startsWith("pref_media_type_")
 				|| key.equals(context.getString(R.string.pref_behaviour_fling_post_left_key))
 				|| key.equals(context.getString(R.string.pref_behaviour_fling_post_right_key))
 				|| key.equals(context.getString(R.string.pref_behaviour_nsfw_key))
