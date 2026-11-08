@@ -127,6 +127,12 @@ public final class PrefsUtility {
 		}
 	}
 
+	/** AndroidX reads persisted list values directly during inflation, before summary binding. */
+	public static void normalizePostLayoutPreference() {
+		sharedPrefs.edit().putString(getPrefKey(R.string.pref_layout_mode_key),
+				post_layout().getPreferenceValue()).apply();
+	}
+
 	public static boolean pref_media_type(final PostMediaType type) {
 		return sharedPrefs.getBoolean("pref_media_type_" + type.getPreferenceValue(), true);
 	}

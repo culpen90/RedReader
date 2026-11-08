@@ -172,6 +172,7 @@ public final class SettingsFragment extends PreferenceFragmentCompat {
 		// On Android 13+ the user may have changed the app's language in the
 		// system settings, so sync the language preference before displaying it
 		PrefsUtility.applyLanguageSetting();
+		PrefsUtility.normalizePostLayoutPreference();
 
 		addPreferencesFromResource(resource);
 
@@ -196,8 +197,8 @@ public final class SettingsFragment extends PreferenceFragmentCompat {
 		final ListPreference layoutPreference = findPreference(
 				getString(R.string.pref_layout_mode_key));
 		if(layoutPreference != null) {
-			layoutPreference.setSummaryProvider((ListPreference preference) -> getString(
-					R.string.pref_layout_mode_summary, preference.getEntry()));
+			layoutPreference.setSummaryProvider(preference -> getString(
+					R.string.pref_layout_mode_summary, layoutPreference.getEntry()));
 		}
 
 		final int[] listPrefsToUpdate = {
