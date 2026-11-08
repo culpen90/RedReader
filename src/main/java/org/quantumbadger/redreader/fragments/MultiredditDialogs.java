@@ -171,8 +171,9 @@ public final class MultiredditDialogs {
 
 		final LinearLayout contents = contents(activity);
 		final TextView description = new TextView(activity);
-		description.setText(activity.getString(
-				R.string.multireddit_create_description, account.username, members.size()));
+		description.setText(activity.getResources().getQuantityString(
+				R.plurals.multireddit_create_description, members.size(),
+				account.username, members.size()));
 		contents.addView(description);
 		contents.addView(input);
 		contents.addView(error);
