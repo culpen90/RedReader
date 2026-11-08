@@ -2137,4 +2137,14 @@
 	<string name="pref_menus_multireddits_header">Multireddits</string>
 	<string name="pref_menus_multireddits_context_items_key" translatable="false">pref_menus_multireddit_context_items</string>
 	<string name="pref_menus_multireddits_context_items_title">Action menu items</string>
+	<string name="remove_subreddit_from_multireddit">Remove subreddit from multireddit</string>
+	<string name="multireddit_remove_button">Remove</string>
+	<string name="multireddit_members_retry">Reload members</string>
+	<string name="multireddit_choose_member">Choose a current subreddit</string>
+	<string name="multireddit_loading_members">Loading current subreddits…</string>
+	<string name="multireddit_no_members">This multireddit has no subreddits to remove.</string>
+	<string name="multireddit_select_member">Select one of the current subreddits.</string>
+	<string name="multireddit_members_failed">Unable to load or update this multireddit. Reload members to retry.</string>
+	<string name="multireddit_removing">Removing subreddit…</string>
+	<string name="multireddit_removed">Removed r/%1$s from %2$s</string>
 </resources>

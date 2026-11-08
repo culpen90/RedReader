@@ -39,6 +39,7 @@ import org.quantumbadger.redreader.common.LinkHandler;
 import org.quantumbadger.redreader.reddit.url.MultiredditPostListURL;
 import org.quantumbadger.redreader.common.PrefsUtility;
 import org.quantumbadger.redreader.fragments.MultiredditDialogs;
+import org.quantumbadger.redreader.fragments.RemoveFromMultiredditDialog;
 import org.quantumbadger.redreader.reddit.things.InvalidSubredditNameException;
 import org.quantumbadger.redreader.reddit.things.SubredditCanonicalId;
 import org.quantumbadger.redreader.reddit.url.PostListingURL;
@@ -78,7 +79,9 @@ public final class MultiredditActionMenus {
 				header.setOnLongClickListener(view -> {
 					showMultireddit(activity, account, target,
 							() -> LinkHandler.onLinkClicked(
-									activity, Constants.Reddit.getNonAPIUri("/")));
+									activity, Constants.Reddit.getNonAPIUri("/")),
+							() -> LinkHandler.onLinkClicked(activity,
+									Constants.Reddit.getNonAPIUri(target.getDisplayPath())));
 					return true;
 				});
 			}
@@ -116,6 +119,16 @@ public final class MultiredditActionMenus {
 			final RedditAccount account,
 			final MultiredditTarget target,
 			@Nullable final Runnable onDeleted) {
+		return showMultireddit(activity, account, target, onDeleted, null);
+	}
+
+	@Nullable
+	public static AlertDialog showMultireddit(
+			final AppCompatActivity activity,
+			final RedditAccount account,
+			final MultiredditTarget target,
+			@Nullable final Runnable onDeleted,
+			@Nullable final Runnable onRemoved) {
 		if(!isLiveHost(activity) || !isAccountAvailable(activity, account)
 				|| !target.isOwnedBy(account)) {
 			return null;
@@ -128,6 +141,14 @@ public final class MultiredditActionMenus {
 				.contains("delete_multireddit")) {
 			titles.add(activity.getString(R.string.delete_multireddit));
 			actions.add(() -> MultiredditDialogs.showDelete(activity, account, target, onDeleted));
+		}
+		if(PrefsUtility.getStringSet(
+				R.string.pref_menus_multireddits_context_items_key,
+				R.array.pref_menus_multireddits_context_items_return)
+				.contains("remove_subreddit_from_multireddit")) {
+			titles.add(activity.getString(R.string.remove_subreddit_from_multireddit));
+			actions.add(() -> RemoveFromMultiredditDialog.show(
+					activity, account, target, onRemoved));
 		}
 		if(actions.isEmpty()) {
 			return null;

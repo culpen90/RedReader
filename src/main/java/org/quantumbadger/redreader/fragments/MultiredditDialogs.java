@@ -36,6 +36,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import org.quantumbadger.redreader.R;
 import org.quantumbadger.redreader.account.RedditAccount;
+import org.quantumbadger.redreader.account.RedditAccountManager;
 import org.quantumbadger.redreader.cache.CacheManager;
 import org.quantumbadger.redreader.cache.CacheRequest;
 import org.quantumbadger.redreader.common.General;
@@ -177,7 +178,7 @@ public final class MultiredditDialogs {
 				return;
 			}
 			final String name = input.getText().toString().trim();
-			if(account.isAnonymous()) {
+			if(!currentAccount(activity, account)) {
 				input.setError(activity.getString(R.string.multireddit_sign_in_required));
 				return;
 			}
@@ -264,6 +265,11 @@ public final class MultiredditDialogs {
 				if(session.isWorking() || !session.isUsable()) {
 					return;
 				}
+				if(!currentAccount(activity, account)) {
+					error.setText(R.string.multireddit_sign_in_required);
+					error.setVisibility(View.VISIBLE);
+					return;
+				}
 				final int generation = session.begin();
 				session.setPending(generation, backend.delete(account, target,
 						new MultiredditApi.ActionListener() {
@@ -288,6 +294,13 @@ public final class MultiredditDialogs {
 		});
 		dialog.show();
 		return dialog;
+	}
+
+	private static boolean currentAccount(
+			final AppCompatActivity activity,
+			final RedditAccount account) {
+		return !account.isAnonymous() && account.equals(
+				RedditAccountManager.getInstance(activity).getAccount(account.username));
 	}
 
 	private static AlertDialog notOwned(

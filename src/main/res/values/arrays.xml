@@ -1437,8 +1437,10 @@
 	</string-array>
 	<string-array name="pref_menus_multireddits_context_items">
 		<item>@string/delete_multireddit</item>
+		<item>@string/remove_subreddit_from_multireddit</item>
 	</string-array>
 	<string-array name="pref_menus_multireddits_context_items_return">
 		<item>delete_multireddit</item>
+		<item>remove_subreddit_from_multireddit</item>
 	</string-array>
 </resources>
