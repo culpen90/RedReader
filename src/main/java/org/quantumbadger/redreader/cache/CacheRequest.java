@@ -259,7 +259,8 @@ public final class CacheRequest implements Comparable<CacheRequest> {
 			@NonNull final CacheRequestCallbacks callbacks) {
 
 		this(url, user, requestSession, priority, downloadStrategy, fileType, queueType,
-				requestBody, requestBody == null ? HTTPBackend.Method.GET : HTTPBackend.Method.POST,
+				requestBody,
+				requestBody == null ? HTTPBackend.Method.GET : HTTPBackend.Method.POST,
 				cache, precache, context, callbacks);
 	}
 

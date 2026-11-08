@@ -243,6 +243,7 @@ public final class AddToMultiredditDialog {
 									? R.string.multireddit_no_owned_names
 									: R.string.multireddit_choose_name);
 							updateControls();
+							mInput.requestFocus();
 						}
 
 						@Override
