@@ -2103,4 +2103,7 @@
 	<string name="inline_media_description_gif">GIF</string>
 	<!-- Translators: very short label shown on top of animated images in comments -->
 	<string name="inline_media_gif_badge">GIF</string>
+	<string name="api_action_failed_title">Action failed</string>
+	<string name="api_action_failed_message">Reddit reported an error: %1$s</string>
+	<string name="api_action_invalid_response">Reddit returned an invalid response. Try again.</string>
 </resources>

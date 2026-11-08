@@ -43,6 +43,7 @@ import org.quantumbadger.redreader.http.FailedRequestBody
 import org.quantumbadger.redreader.http.HTTPBackend
 import org.quantumbadger.redreader.http.body.HTTPRequestBody
 import org.quantumbadger.redreader.http.body.multipart.Part
+import java.io.ByteArrayInputStream
 import java.io.IOException
 import java.io.InputStream
 import java.net.InetSocketAddress
@@ -170,38 +171,39 @@ class OKHTTPBackend private constructor() : HTTPBackend() {
 
 		val requestBody = details.requestBody
 
-		if (requestBody != null) {
-			reqBuilder.post(
-				when (requestBody) {
-					is HTTPRequestBody.Multipart -> {
-						val builder = MultipartBody.Builder().setType(MultipartBody.FORM)
+		val encodedBody = if (requestBody != null) {
+			when (requestBody) {
+				is HTTPRequestBody.Multipart -> {
+					val builder = MultipartBody.Builder().setType(MultipartBody.FORM)
 
-						requestBody.forEachPart { part: Part ->
-							when (part) {
-								is Part.FormData -> {
-									builder.addFormDataPart(part.name, part.value)
-								}
+					requestBody.forEachPart { part: Part ->
+						when (part) {
+							is Part.FormData -> {
+								builder.addFormDataPart(part.name, part.value)
+							}
 
-								is Part.FormDataBinary -> {
-									builder.addFormDataPart(
-										name = part.name,
-										filename = null,
-										body = part.value.toRequestBody("application/octet-stream".toMediaType())
-									)
-								}
+							is Part.FormDataBinary -> {
+								builder.addFormDataPart(
+									name = part.name,
+									filename = null,
+									body = part.value.toRequestBody("application/octet-stream".toMediaType())
+								)
 							}
 						}
-
-						builder.build()
 					}
 
-					is HTTPRequestBody.PostFields -> requestBody.encodeFields()
-						.toRequestBody("application/x-www-form-urlencoded".toMediaType())
+					builder.build()
 				}
-			)
+
+				is HTTPRequestBody.PostFields -> requestBody.encodeFields()
+					.toRequestBody("application/x-www-form-urlencoded".toMediaType())
+			}
+		} else if (details.method == Method.POST || details.method == Method.PUT) {
+			ByteArray(0).toRequestBody(null)
 		} else {
-			reqBuilder.get()
+			null
 		}
+		reqBuilder.method(details.method.name, encodedBody)
 
 		reqBuilder.url(details.url.value)
 		reqBuilder.cacheControl(CacheControl.FORCE_NETWORK)
@@ -238,7 +240,7 @@ class OKHTTPBackend private constructor() : HTTPBackend() {
 					val status = response.code
 					val body = response.body
 
-					if (status == 200 || status == 202) {
+					if (status in 200..299) {
 
 						val bodyStream: InputStream?
 						val bodyLength: Long?
@@ -247,8 +249,8 @@ class OKHTTPBackend private constructor() : HTTPBackend() {
 							bodyStream = body.byteStream()
 							bodyLength = body.contentLength().takeUnless { it < 0 }
 						} else {
-							bodyStream = null
-							bodyLength = null
+							bodyStream = ByteArrayInputStream(ByteArray(0))
+							bodyLength = 0L
 						}
 
 						val contentType = response.header("Content-Type")

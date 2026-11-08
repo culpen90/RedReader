@@ -26,7 +26,9 @@ import androidx.annotation.Nullable;
 import org.quantumbadger.redreader.account.RedditAccount;
 import org.quantumbadger.redreader.activities.BugReportActivity;
 import org.quantumbadger.redreader.cache.downloadstrategy.DownloadStrategy;
+import org.quantumbadger.redreader.cache.downloadstrategy.DownloadStrategyAlways;
 import org.quantumbadger.redreader.common.General;
+import org.quantumbadger.redreader.common.Constants;
 import org.quantumbadger.redreader.common.GenericFactory;
 import org.quantumbadger.redreader.common.Optional;
 import org.quantumbadger.redreader.common.Priority;
@@ -35,6 +37,7 @@ import org.quantumbadger.redreader.common.UriString;
 import org.quantumbadger.redreader.common.datastream.SeekableInputStream;
 import org.quantumbadger.redreader.common.time.TimestampUTC;
 import org.quantumbadger.redreader.http.body.HTTPRequestBody;
+import org.quantumbadger.redreader.http.HTTPBackend;
 
 import java.io.IOException;
 import java.util.UUID;
@@ -76,6 +79,7 @@ public final class CacheRequest implements Comparable<CacheRequest> {
 
 	public final DownloadQueueType queueType;
 	@NonNull public final Optional<HTTPRequestBody> requestBody;
+	@NonNull public final HTTPBackend.Method method;
 
 	public final boolean cache;
 
@@ -222,6 +226,23 @@ public final class CacheRequest implements Comparable<CacheRequest> {
 				callbacks);
 	}
 
+	/** Creates an uncached API operation while preserving the existing request constructors. */
+	@NonNull
+	public static CacheRequest newUncachedRequest(
+			@NonNull final UriString url,
+			@NonNull final RedditAccount user,
+			@NonNull final HTTPBackend.Method method,
+			@Nullable final HTTPRequestBody requestBody,
+			@NonNull final Context context,
+			@NonNull final CacheRequestCallbacks callbacks) {
+
+		return new CacheRequest(
+				url, user, null, new Priority(Constants.Priority.API_ACTION),
+				DownloadStrategyAlways.INSTANCE,
+				Constants.FileType.NOCACHE, DownloadQueueType.REDDIT_API,
+				requestBody, method, false, false, context, callbacks);
+	}
+
 	// TODO remove this huge constructor, make mutable
 	private CacheRequest(
 			@NonNull final UriString url,
@@ -237,6 +258,26 @@ public final class CacheRequest implements Comparable<CacheRequest> {
 			@NonNull final Context context,
 			@NonNull final CacheRequestCallbacks callbacks) {
 
+		this(url, user, requestSession, priority, downloadStrategy, fileType, queueType,
+				requestBody, requestBody == null ? HTTPBackend.Method.GET : HTTPBackend.Method.POST,
+				cache, precache, context, callbacks);
+	}
+
+	private CacheRequest(
+			@NonNull final UriString url,
+			@NonNull final RedditAccount user,
+			@Nullable final UUID requestSession,
+			@NonNull final Priority priority,
+			@NonNull final DownloadStrategy downloadStrategy,
+			final int fileType,
+			final DownloadQueueType queueType,
+			@Nullable final HTTPRequestBody requestBody,
+			@NonNull final HTTPBackend.Method method,
+			final boolean cache,
+			final boolean precache,
+			@NonNull final Context context,
+			@NonNull final CacheRequestCallbacks callbacks) {
+
 		this.context = context.getApplicationContext();
 		mCallbacks = callbacks;
 
@@ -245,9 +286,9 @@ public final class CacheRequest implements Comparable<CacheRequest> {
 					"User was null - set to empty string for anonymous");
 		}
 
-		if(!downloadStrategy.shouldDownloadWithoutCheckingCache() && requestBody != null) {
+		if(!downloadStrategy.shouldDownloadWithoutCheckingCache() && method != HTTPBackend.Method.GET) {
 			throw new IllegalArgumentException(
-					"Should not perform cache lookup for POST requests");
+					"Should not perform cache lookup for mutating requests");
 		}
 
 		this.url = url;
@@ -258,7 +299,11 @@ public final class CacheRequest implements Comparable<CacheRequest> {
 		this.fileType = fileType;
 		this.queueType = queueType;
 		this.requestBody = Optional.ofNullable(requestBody);
-		this.cache = (requestBody == null) && cache;
+		this.method = method;
+		if(method == HTTPBackend.Method.GET && requestBody != null) {
+			throw new IllegalArgumentException("GET requests cannot carry a body");
+		}
+		this.cache = method == HTTPBackend.Method.GET && cache;
 		this.precache = precache;
 
 		if(precache && !this.cache) {

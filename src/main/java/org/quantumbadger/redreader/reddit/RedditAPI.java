@@ -36,6 +36,7 @@ import org.quantumbadger.redreader.cache.downloadstrategy.DownloadStrategyAlways
 import org.quantumbadger.redreader.cache.downloadstrategy.DownloadStrategyIfTimestampOutsideBounds;
 import org.quantumbadger.redreader.common.Constants;
 import org.quantumbadger.redreader.common.General;
+import org.quantumbadger.redreader.common.StringUtils;
 import org.quantumbadger.redreader.common.GenericFactory;
 import org.quantumbadger.redreader.common.Optional;
 import org.quantumbadger.redreader.common.PrefsUtility;
@@ -491,6 +492,34 @@ public final class RedditAPI {
 				context);
 	}
 
+	/** Marks only the supplied inbox items as read, using the captured account. */
+	public static void markMessagesAsRead(
+			final CacheManager cm,
+			final APIResponseHandler.ActionResponseHandler responseHandler,
+			final RedditAccount user,
+			@NonNull final List<RedditIdAndType> ids,
+			final Context context) {
+
+		if(ids.size() > 25) {
+			throw new IllegalArgumentException("At most 25 inbox items per request");
+		}
+		if(ids.isEmpty()) {
+			responseHandler.notifySuccess();
+			return;
+		}
+		final java.util.LinkedHashSet<String> uniqueIds = new java.util.LinkedHashSet<>();
+		for(final RedditIdAndType id : ids) {
+			if(!id.getValue().matches("t[14]_[A-Za-z0-9]+")) {
+				throw new IllegalArgumentException("Expected a comment or message fullname");
+			}
+			uniqueIds.add(id.getValue());
+		}
+		final LinkedList<PostField> fields = new LinkedList<>();
+		fields.add(new PostField("id", StringUtils.join(uniqueIds, ",")));
+		postIgnoringResponse(cm, responseHandler, user,
+				Constants.Reddit.getUri("/api/read_message"), fields, context);
+	}
+
 	/**
 	 * Sends a POST request to an endpoint which returns an empty response on
 	 * success, notifying the handler of success or failure.
@@ -508,23 +537,17 @@ public final class RedditAPI {
 				user,
 				postFields,
 				context,
-				new CacheRequestCallbacks() {
+				new RedditMutationCallbacks(context, new RedditMutationCallbacks.Listener() {
+					@Override
+					public void onSuccess() {
+						responseHandler.notifySuccess();
+					}
+
 					@Override
 					public void onFailure(@NonNull final RRError error) {
 						responseHandler.notifyFailure(error);
 					}
-
-					@Override
-					public void onDataStreamComplete(
-							@NonNull final GenericFactory<SeekableInputStream, IOException> stream,
-							final TimestampUTC timestamp,
-							@NonNull final UUID session,
-							final boolean fromCache,
-							@Nullable final String mimetype) {
-
-						responseHandler.notifySuccess();
-					}
-				}));
+				})));
 	}
 
 	public static void editComment(
