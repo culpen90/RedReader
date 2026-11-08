@@ -17,7 +17,6 @@
 
 package org.quantumbadger.redreader.test.general
 
-import android.content.Context
 import android.content.SharedPreferences
 import android.view.View
 import android.widget.ImageButton
@@ -32,12 +31,15 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.quantumbadger.redreader.R
+import org.quantumbadger.redreader.common.General
 import org.quantumbadger.redreader.common.PrefsUtility
+import org.quantumbadger.redreader.common.SharedPrefsWrapper
 import org.quantumbadger.redreader.views.video.ExoPlayerWrapperView
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.util.ReflectionHelpers
+import java.util.concurrent.atomic.AtomicReference
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
@@ -49,9 +51,13 @@ class VideoLoopPreferenceTest {
 	@Before
 	fun setUpPreferences() {
 		app.setTheme(R.style.RR_Dark)
-		prefs = app.getSharedPreferences("video-policy-test", Context.MODE_PRIVATE)
+		ReflectionHelpers.getStaticField<AtomicReference<SharedPrefsWrapper>>(
+			General::class.java, "mPrefs"
+		).set(null)
+		val wrapped = General.getSharedPrefs(app)
+		prefs = ReflectionHelpers.getField(wrapped, "mPrefs")
 		prefs.edit().clear().commit()
-		ReflectionHelpers.setStaticField(PrefsUtility::class.java, "sharedPrefs", prefs)
+		ReflectionHelpers.setStaticField(PrefsUtility::class.java, "sharedPrefs", wrapped)
 		ReflectionHelpers.setStaticField(PrefsUtility::class.java, "mRes", app.resources)
 		ReflectionHelpers.setStaticField(PrefsUtility::class.java, "appContext", app)
 	}
