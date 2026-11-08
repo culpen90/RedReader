@@ -122,7 +122,9 @@ public final class PrefsUtility {
 	}
 
 	public static void pref_media_type_set(final PostMediaType type, final boolean enabled) {
-		sharedPrefs.edit().putBoolean("pref_media_type_" + type.getPreferenceValue(), enabled).apply();
+		sharedPrefs.edit()
+				.putBoolean("pref_media_type_" + type.getPreferenceValue(), enabled)
+				.apply();
 	}
 
 	@SuppressWarnings("unused")
