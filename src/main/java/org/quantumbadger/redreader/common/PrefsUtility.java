@@ -144,6 +144,8 @@ public final class PrefsUtility {
 				|| key.equals(context.getString(R.string.pref_blocked_subreddit_regexes_key))
 				|| key.equals(context.getString(R.string.pref_hidden_post_title_terms_key))
 				|| key.equals(context.getString(R.string.pref_hidden_post_title_regexes_key))
+				|| key.equals(context.getString(R.string.pref_behaviour_hide_few_comments_key))
+				|| key.equals(context.getString(R.string.pref_behaviour_min_comments_key))
 				|| key.equals(context.getString(R.string.pref_behaviour_pinned_subredditsort_key))
 				|| key.equals(context.getString(
 						R.string.pref_behaviour_blocked_subredditsort_key))
@@ -968,7 +970,6 @@ public final class PrefsUtility {
 		return getBoolean(R.string.pref_behaviour_video_frame_step_key,
 				false);
 	}
-
 	public static boolean pref_behaviour_video_mute_default() {
 		return getBoolean(
 				R.string.pref_behaviour_video_mute_default_key,
@@ -1350,6 +1351,36 @@ public final class PrefsUtility {
 		return getBoolean(
 				R.string.pref_behaviour_mark_posts_as_read_on_scroll_key,
 				false);
+	}
+
+	public static boolean pref_behaviour_hide_few_comments() {
+		return getBoolean(
+				R.string.pref_behaviour_hide_few_comments_key,
+				false);
+	}
+
+	public static final int MAX_MIN_COMMENTS = 100_000;
+
+	public static int pref_behaviour_min_comments() {
+		try {
+			final int value = Integer.parseInt(getString(
+					R.string.pref_behaviour_min_comments_key,
+					"10"));
+			return value >= 0 && value <= MAX_MIN_COMMENTS ? value : 10;
+		} catch(final NumberFormatException | ClassCastException e) {
+			return 10;
+		}
+	}
+
+	public static void pref_behaviour_min_comments(final int value) {
+		if(value < 0 || value > MAX_MIN_COMMENTS) {
+			throw new IllegalArgumentException("Minimum comment count is out of range");
+		}
+		sharedPrefs.edit()
+				.putString(
+						getPrefKey(R.string.pref_behaviour_min_comments_key),
+						String.valueOf(value))
+				.apply();
 	}
 
 	public enum SharingDomain {
