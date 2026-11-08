@@ -132,7 +132,15 @@ public class ExoPlayerWrapperView extends FrameLayout {
 			mVideoPlayer.setRepeatMode(Player.REPEAT_MODE_OFF);
 		}
 
-		mVideoPlayer.setPlayWhenReady(true);
+		// Autoplay cannot be disabled if video controls are disabled
+		if(
+			PrefsUtility.pref_behaviour_video_playback_controls()
+				&& !PrefsUtility.pref_behaviour_video_autoplay()
+		) {
+			mVideoPlayer.setPlayWhenReady(false);
+		} else {
+			mVideoPlayer.setPlayWhenReady(true);
+		}
 
 		if(PrefsUtility.pref_behaviour_video_zoom_default()) {
 			videoPlayerView.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_ZOOM);
@@ -198,8 +206,10 @@ public class ExoPlayerWrapperView extends FrameLayout {
 			mPlayButton = createButton(
 					context,
 					mControlView,
-					R.drawable.icon_pause,
-					R.string.video_pause,
+					mVideoPlayer.getPlayWhenReady()
+							? R.drawable.icon_pause : R.drawable.icon_play,
+					mVideoPlayer.getPlayWhenReady()
+							? R.string.video_pause : R.string.video_play,
 					view -> {
 						if(mVideoPlayer.getPlaybackState() == Player.STATE_ENDED) {
 							mVideoPlayer.seekTo(0);
@@ -398,7 +408,7 @@ public class ExoPlayerWrapperView extends FrameLayout {
 						IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
 			}
 
-			mControlView.setVisibility(GONE);
+			mControlView.setVisibility(mVideoPlayer.getPlayWhenReady() ? GONE : VISIBLE);
 
 		} else {
 			mControlView = null;
