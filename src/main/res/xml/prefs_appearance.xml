@@ -171,6 +171,10 @@
                             android:key="@string/pref_appearance_indentlines_key"
                             android:defaultValue="false"/>
 
+		<CheckBoxPreference android:title="@string/pref_appearance_colorful_indentlines_title"
+							android:key="@string/pref_appearance_colorful_indentlines_key"
+							android:defaultValue="false"/>
+
 		<CheckBoxPreference
 				android:title="@string/pref_appearance_hide_headertoolbar_commentlist_title"
 				android:key="@string/pref_appearance_hide_headertoolbar_commentlist_key"
