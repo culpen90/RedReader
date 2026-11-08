@@ -340,7 +340,7 @@ public final class RedditPostView extends FlingableItemView
 			}
 
 			mThumbnailView.setImageBitmap(null);
-			mImagePreviewImageView.setImageBitmap(null);
+			mImagePreviewImageView.setImageDrawable(null);
 			mImagePreviewPlayOverlay.setVisibility(GONE);
 			mPostErrors.removeAllViews();
 
@@ -581,7 +581,7 @@ public final class RedditPostView extends FlingableItemView
 
 			case FAILED:
 
-				mImagePreviewImageView.setImageBitmap(null);
+				mImagePreviewImageView.setImageDrawable(null);
 				mImagePreviewPlayOverlay.setVisibility(GONE);
 				mImagePreviewLoadingSpinner.setVisibility(GONE);
 				mImagePreviewOuter.setVisibility(GONE);
@@ -597,7 +597,7 @@ public final class RedditPostView extends FlingableItemView
 				break;
 
 			case NOT_LOADED:
-				mImagePreviewImageView.setImageBitmap(null);
+				mImagePreviewImageView.setImageDrawable(null);
 				mImagePreviewPlayOverlay.setVisibility(GONE);
 				mImagePreviewLoadingSpinner.setVisibility(GONE);
 				mImagePreviewOuter.setVisibility(GONE);
@@ -607,7 +607,7 @@ public final class RedditPostView extends FlingableItemView
 			case LOADING:
 			default:
 
-				mImagePreviewImageView.setImageBitmap(null);
+				mImagePreviewImageView.setImageDrawable(null);
 				mImagePreviewPlayOverlay.setVisibility(GONE);
 				mImagePreviewLoadingSpinner.setVisibility(VISIBLE);
 				mImagePreviewOuter.setVisibility(VISIBLE);

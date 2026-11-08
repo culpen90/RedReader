@@ -138,11 +138,16 @@ class InlinePreviewTransportTest {
 
 	private open class Capture : CacheRequestCallbacks {
 		var failures = 0
+		var failure: RRError? = null
 		var completed = 0
 		var cached = 0
 		var stream: MemoryDataStream? = null
 		val finished = CountDownLatch(1)
-		override fun onFailure(error: RRError) { failures++; finished.countDown() }
+		override fun onFailure(error: RRError) {
+			failure = error
+			failures++
+			finished.countDown()
+		}
 		override fun onDataStreamAvailable(
 			streamFactory: GenericFactory<SeekableInputStream, IOException>, timestamp: TimestampUTC,
 			session: UUID, fromCache: Boolean, mimetype: String?
@@ -238,10 +243,11 @@ class InlinePreviewTransportTest {
 				false, false, false, true)
 			val details = InlinePreviewLoader.calculatePreviewDetails(activity, prepared)!!
 			assertEquals(target, details.url)
-			val bitmap = Bitmap.createBitmap(2400, 1200, Bitmap.Config.ARGB_8888)
+			val bitmap = Bitmap.createBitmap(1200, 600, Bitmap.Config.ARGB_8888)
 			val bytes = ByteArrayOutputStream()
 			assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG, 100, bytes))
 			bitmap.recycle()
+			assertTrue("Valid transport fixture must fit the byte limit", bytes.size() <= cap)
 			response(-1, ByteArrayInputStream(bytes.toByteArray()))
 			val capture = object : Capture() {
 				override fun onDataStreamComplete(
@@ -259,7 +265,7 @@ class InlinePreviewTransportTest {
 				}
 			}
 			CacheDownload(request(capture, details.url), manager).doDownload()
-			assertEquals(0, capture.failures)
+			assertEquals(capture.failure.toString(), 0, capture.failures)
 			assertEquals(1, capture.completed)
 			assertTrue(capture.stream!!.capacity <= cap)
 			// The same positive-int metadata contract also covers extreme tall sources.
@@ -280,7 +286,9 @@ class InlinePreviewTransportTest {
 			val writable = manager.openNewCacheFile(target, RedditAccountManager.getAnon(),
 				Constants.FileType.IMAGE, UUID.randomUUID(), "image/png", compression)
 			val bytes = byteArrayOf(1, 2, 3)
-			writable.writeWholeFile(bytes, 0, bytes.size)
+			// The compressed entry must be rejected without invoking the native reader.
+			// Labeling a tiny raw fixture avoids needing Android's Zstd JNI to create it.
+			writable.writeExternally().writeBytes(bytes)
 			writable.onWriteFinished()
 			if (compression == CacheCompressionType.NONE) {
 				RandomAccessFile(writable.readableCacheFile.file.get(), "rw").use {
