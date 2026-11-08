@@ -547,7 +547,10 @@ object LinkHandler {
 	private val streamablePattern: Pattern = Pattern.compile(".*[^A-Za-z]streamable\\.com/(\\w+).*")
 	private val reddituploadsPattern: Pattern =
 		Pattern.compile(".*[^A-Za-z]i\\.reddituploads\\.com/(\\w+).*")
-	private val redditVideosPattern: Pattern = Pattern.compile(".*[^A-Za-z]v.redd.it/(\\w+).*")
+	private val redditVideoPathPattern: Pattern = Pattern.compile("^/([A-Za-z0-9_]{4,})(?:/.*)?$")
+
+	private val redditCommentVideoPathPattern: Pattern =
+		Pattern.compile("^/link/[A-Za-z0-9_]+/video/([A-Za-z0-9_]{4,})/player/?$")
 	private val imgflipPattern: Pattern = Pattern.compile(".*[^A-Za-z]imgflip\\.com/i/(\\w+).*")
 	private val makeamemePattern: Pattern = Pattern.compile(".*[^A-Za-z]makeameme\\.org/meme/([\\w\\-]+).*")
 	private val deviantartPattern: Pattern =
@@ -570,6 +573,39 @@ object LinkHandler {
 
 	@JvmStatic
 	fun isRedGifsImage(url: UriString): Boolean = getRedGifsId(url) != null
+
+	/**
+	 * Returns the ID of the video on v.redd.it which this URL points to, if any. This is
+	 * either a link to the video itself, or to the player for a video embedded in a comment.
+	 */
+	@JvmStatic
+	fun getRedditVideoId(url: UriString): String? {
+
+		val uri = url.toUri()
+		if (!uri.scheme.equals("https", ignoreCase = true)
+			&& !uri.scheme.equals("http", ignoreCase = true)
+		) {
+			return null
+		}
+
+		// Match the authority, rather than text elsewhere in the URL. In particular, a
+		// query or a path on an unrelated host must not become a Reddit video link.
+		val host = uri.host?.lowercase() ?: return null
+		val defaultPort = if (uri.scheme.equals("https", ignoreCase = true)) 443 else 80
+		if (uri.userInfo != null || (uri.port != -1 && uri.port != defaultPort)) {
+			return null
+		}
+
+		val pattern = when {
+			host == "v.redd.it" -> redditVideoPathPattern
+			host == "reddit.com" || host.endsWith(".reddit.com") -> redditCommentVideoPathPattern
+			else -> return null
+		}
+
+		// Keep encoded path separators from changing which route is being matched.
+		val matcher = pattern.matcher(uri.encodedPath ?: return null)
+		return if (matcher.matches()) matcher.group(1) else null
+	}
 
 	// The compact embedded player, intended for use inside a WebView -- unlike
 	// the full site, this doesn't show a cookie banner or other page furniture.
@@ -665,15 +701,8 @@ object LinkHandler {
 			}
 		}
 
-		run {
-			val matchRedditVideos = redditVideosPattern.matcher(url.value)
-			if (matchRedditVideos.find()) {
-				matchRedditVideos.group(1)?.let { imgId ->
-					if (imgId.length > 3) {
-						return true
-					}
-				}
-			}
+		if (getRedditVideoId(url) != null) {
+			return true
 		}
 
 		return getImageUrlPatternMatch(url) != null
@@ -951,21 +980,14 @@ object LinkHandler {
 				}
 			}
 		}
-		run {
-			val matchRedditVideos = redditVideosPattern.matcher(url.value)
-			if (matchRedditVideos.find()) {
-				matchRedditVideos.group(1)?.let { imgId ->
-					if (imgId.length > 3) {
-						RedditVideosAPI.getImageInfo(
-							context,
-							imgId,
-							priority,
-							listener
-						)
-						return
-					}
-				}
-			}
+		getRedditVideoId(url)?.let { videoId ->
+			RedditVideosAPI.getImageInfo(
+				context,
+				videoId,
+				priority,
+				listener
+			)
+			return
 		}
 
 		val imageUrlPatternMatch = getImageUrlPatternMatch(url)
