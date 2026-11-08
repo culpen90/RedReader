@@ -19,6 +19,7 @@ package org.quantumbadger.redreader.reddit.api
 
 import android.content.Context
 import android.net.Uri
+import androidx.core.net.toUri
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -213,7 +214,7 @@ object MultiredditApi {
 			val owner = (data["owner"] as? JsonPrimitive)?.contentOrNull
 			val path = (data["path"] as? JsonPrimitive)?.contentOrNull
 			val pathOwner = path?.let {
-				val segments = Uri.parse(it).pathSegments
+				val segments = it.toUri().pathSegments
 				if (segments.size != 4 || segments[0] != "user" || segments[2] != "m"
 					|| !segments[3].equals(name, ignoreCase = true)) {
 					throw IllegalArgumentException("Invalid multireddit path")
