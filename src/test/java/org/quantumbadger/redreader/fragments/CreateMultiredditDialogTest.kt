@@ -131,7 +131,7 @@ class CreateMultiredditDialogTest {
 		members: Collection<SubredditCanonicalId> = listOf(SubredditCanonicalId("android")),
 		user: RedditAccount = account
 	): Pair<AlertDialog, EditText> {
-		val dialog = MultiredditDialogs.showCreate(activity, user, members, backend)
+		val dialog = requireNotNull(MultiredditDialogs.showCreate(activity, user, members, backend))
 		dialogs.add(dialog)
 		idle()
 		return dialog to input(dialog.window!!.decorView)!!

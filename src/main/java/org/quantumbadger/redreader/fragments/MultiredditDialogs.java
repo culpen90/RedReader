@@ -31,6 +31,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.DefaultLifecycleObserver;
 import androidx.lifecycle.LifecycleOwner;
+import androidx.lifecycle.Lifecycle;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
@@ -133,7 +134,7 @@ public final class MultiredditDialogs {
 		}
 	}
 
-	@NonNull
+	@Nullable
 	public static AlertDialog showCreate(
 			final AppCompatActivity activity,
 			final RedditAccount account,
@@ -141,12 +142,16 @@ public final class MultiredditDialogs {
 		return showCreate(activity, account, subreddits, new ApiBackend(activity));
 	}
 
+	@Nullable
 	static AlertDialog showCreate(
 			final AppCompatActivity activity,
 			final RedditAccount account,
 			final Collection<SubredditCanonicalId> subreddits,
 			final Backend backend) {
 
+		if(!liveHost(activity)) {
+			return null;
+		}
 		// The listing or default account can change while the input dialog is open.
 		final List<SubredditCanonicalId> members = Collections.unmodifiableList(
 				new ArrayList<>(subreddits));
@@ -225,7 +230,7 @@ public final class MultiredditDialogs {
 		return dialog;
 	}
 
-	@NonNull
+	@Nullable
 	public static AlertDialog showDelete(
 			final AppCompatActivity activity,
 			final RedditAccount account,
@@ -234,12 +239,16 @@ public final class MultiredditDialogs {
 		return showDelete(activity, account, target, onDeleted, new ApiBackend(activity));
 	}
 
+	@Nullable
 	static AlertDialog showDelete(
 			final AppCompatActivity activity,
 			final RedditAccount account,
 			final MultiredditTarget target,
 			@Nullable final Runnable onDeleted,
 			final Backend backend) {
+		if(!liveHost(activity)) {
+			return null;
+		}
 		if(!target.isOwnedBy(account)) {
 			return notOwned(activity, target);
 		}
@@ -294,6 +303,11 @@ public final class MultiredditDialogs {
 		});
 		dialog.show();
 		return dialog;
+	}
+
+	private static boolean liveHost(final AppCompatActivity activity) {
+		return !activity.isFinishing() && !activity.isDestroyed()
+				&& activity.getLifecycle().getCurrentState().isAtLeast(Lifecycle.State.STARTED);
 	}
 
 	private static boolean currentAccount(
@@ -403,8 +417,7 @@ public final class MultiredditDialogs {
 		}
 
 		private boolean isUsable() {
-			return mAttached && mDialog.isShowing()
-					&& !mActivity.isFinishing() && !mActivity.isDestroyed();
+			return mAttached && mDialog.isShowing() && liveHost(mActivity);
 		}
 
 		private boolean accepts(final int generation) {

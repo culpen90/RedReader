@@ -182,6 +182,9 @@ class RemoveFromMultiredditDialogTest {
 		fake.reads.single().listener.onSuccess(listOf("android"))
 		val field = input(dialog.window!!.decorView)!!
 		field.setText("android")
+		val bob = RedditAccount("Bob", null, 1, "other-client")
+		RedditAccountManager.getInstance(app).addAccount(bob)
+		ReflectionHelpers.setField(RedditAccountManager.getInstance(app), "defaultAccountCache", bob)
 		field.onEditorAction(EditorInfo.IME_ACTION_DONE)
 		field.onEditorAction(EditorInfo.IME_ACTION_GO)
 		dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()

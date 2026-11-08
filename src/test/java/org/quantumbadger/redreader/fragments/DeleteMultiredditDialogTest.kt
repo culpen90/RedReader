@@ -109,7 +109,7 @@ class DeleteMultiredditDialogTest {
 	}
 
 	private fun show(backend: FakeBackend, after: Runnable? = null): AlertDialog {
-		val dialog = MultiredditDialogs.showDelete(activity, account, target, after, backend)
+		val dialog = requireNotNull(MultiredditDialogs.showDelete(activity, account, target, after, backend))
 		dialogs.add(dialog)
 		idle()
 		return dialog
@@ -142,7 +142,7 @@ class DeleteMultiredditDialogTest {
 		assertFalse(other.isOwnedBy(account))
 		assertNull(MultiredditActionMenus.showMultireddit(activity, account, other, null))
 		val backend = FakeBackend()
-		val dialog = MultiredditDialogs.showDelete(activity, account, other, null, backend)
+		val dialog = requireNotNull(MultiredditDialogs.showDelete(activity, account, other, null, backend))
 		dialogs.add(dialog)
 		idle()
 		assertTrue(dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.visibility != View.VISIBLE)

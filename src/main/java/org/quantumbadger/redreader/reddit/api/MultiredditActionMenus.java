@@ -157,7 +157,8 @@ public final class MultiredditActionMenus {
 	}
 
 	public static boolean isAccountAvailable(final Context context, final RedditAccount account) {
-		return account.equals(RedditAccountManager.getInstance(context).getAccount(account.username));
+		return account.equals(RedditAccountManager.getInstance(context)
+				.getAccount(account.username));
 	}
 
 	private static boolean isLiveHost(final AppCompatActivity activity) {
