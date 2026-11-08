@@ -57,6 +57,7 @@ import org.quantumbadger.redreader.common.FeatureFlagHandler;
 import org.quantumbadger.redreader.common.General;
 import org.quantumbadger.redreader.common.LinkHandler;
 import org.quantumbadger.redreader.common.PrefsUtility;
+import org.quantumbadger.redreader.common.PinnedSubredditFeed;
 import org.quantumbadger.redreader.common.SharedPrefsWrapper;
 import org.quantumbadger.redreader.common.UriString;
 import org.quantumbadger.redreader.common.collections.CollectionStream;
@@ -249,9 +250,12 @@ public class MainActivity extends RefreshableActivity
 			AndroidCommon.promptForNotificationPermission(this, null);
 		}
 
-		if(savedInstanceState == null
-				&& PrefsUtility.pref_behaviour_skiptofrontpage()) {
-			onSelected(SubredditPostListURL.getFrontPage());
+		if(savedInstanceState == null) {
+			final boolean openedPinned = PrefsUtility.pref_behaviour_skiptopinned()
+					&& openPinnedSubreddits();
+			if(!openedPinned && PrefsUtility.pref_behaviour_skiptofrontpage()) {
+				onSelected(SubredditPostListURL.getFrontPage());
+			}
 		}
 
 		if(savedInstanceState != null && savedInstanceState.containsKey(BROWSER_URL)) {
@@ -320,6 +324,21 @@ public class MainActivity extends RefreshableActivity
 		if(listenerContext != null) {
 			listenerContext.removeListener();
 		}
+	}
+
+	private boolean openPinnedSubreddits() {
+		final PinnedSubredditFeed feed = PinnedSubredditFeed.from(
+				PrefsUtility.pref_pinned_subreddits());
+		if(feed.isEmpty()) {
+			General.quickToast(this, R.string.pinned_feed_empty);
+			return false;
+		}
+		if(feed.isTooLarge()) {
+			General.quickToast(this, R.string.pinned_feed_too_large);
+			return false;
+		}
+		onSelected(feed.getUrl());
+		return true;
 	}
 
 	@Override
@@ -539,7 +558,12 @@ public class MainActivity extends RefreshableActivity
 
 			case MainMenuFragment.MENU_MENU_ACTION_FIND_SUBREDDIT: {
 				startActivity(new Intent(this, SubredditSearchActivity.class));
+				break;
 			}
+
+			case MainMenuFragment.MENU_MENU_ACTION_PINNED:
+				openPinnedSubreddits();
+				break;
 		}
 	}
 

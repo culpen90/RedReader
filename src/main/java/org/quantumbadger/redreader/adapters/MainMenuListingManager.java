@@ -45,6 +45,7 @@ import org.quantumbadger.redreader.common.General;
 import org.quantumbadger.redreader.common.LinkHandler;
 import org.quantumbadger.redreader.common.Optional;
 import org.quantumbadger.redreader.common.PrefsUtility;
+import org.quantumbadger.redreader.common.PinnedSubredditFeed;
 import org.quantumbadger.redreader.common.ScreenreaderPronunciation;
 import org.quantumbadger.redreader.common.SharedPrefsWrapper;
 import org.quantumbadger.redreader.common.UriString;
@@ -214,6 +215,17 @@ public class MainMenuListingManager {
 						makeItem(
 								R.string.mainmenu_all,
 								MainMenuFragment.MENU_MENU_ACTION_ALL,
+								null,
+								false));
+			}
+
+			if(mainMenuShortcutItems.contains(MainMenuFragment.MainMenuShortcutItems.PINNED)
+					&& !PinnedSubredditFeed.from(PrefsUtility.pref_pinned_subreddits()).isEmpty()) {
+				mAdapter.appendToGroup(
+						GROUP_MAIN_ITEMS,
+						makeItem(
+								R.string.mainmenu_pinned,
+								MainMenuFragment.MENU_MENU_ACTION_PINNED,
 								null,
 								false));
 			}

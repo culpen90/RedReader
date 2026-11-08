@@ -919,6 +919,10 @@ public final class PrefsUtility {
 				false);
 	}
 
+	public static boolean pref_behaviour_skiptopinned() {
+		return getBoolean(R.string.pref_behaviour_skiptopinned_key, false);
+	}
+
 	public static boolean pref_behaviour_useinternalbrowser() {
 		return getBoolean(
 				R.string.pref_behaviour_useinternalbrowser_key,
