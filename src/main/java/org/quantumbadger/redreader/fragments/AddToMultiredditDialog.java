@@ -18,7 +18,6 @@
 package org.quantumbadger.redreader.fragments;
 
 import android.view.KeyEvent;
-import android.view.View;
 import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
 import android.widget.ArrayAdapter;
