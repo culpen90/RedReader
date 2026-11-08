@@ -961,7 +961,8 @@ public class MainMenuListingManager {
 			final boolean hideDivider) {
 
 		final View.OnClickListener clickListener = view -> mListener.onSelected(
-				(PostListingURL)MultiredditPostListURL.getMultireddit(mUser.canonicalUsername, name));
+				(PostListingURL)MultiredditPostListURL.getMultireddit(
+						mUser.canonicalUsername, name));
 
 		return new GroupedRecyclerViewItemListItemView(
 				null,
