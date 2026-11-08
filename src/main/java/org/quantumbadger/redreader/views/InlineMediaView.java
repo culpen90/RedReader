@@ -110,6 +110,7 @@ public final class InlineMediaView extends FrameLayout
 				LayoutParams.MATCH_PARENT));
 
 		mLoadingSpinner = new LoadingSpinnerView(activity);
+		mLoadingSpinner.setVisibility(GONE);
 		addView(mLoadingSpinner, new LayoutParams(
 				LayoutParams.MATCH_PARENT,
 				LayoutParams.MATCH_PARENT));
@@ -249,6 +250,7 @@ public final class InlineMediaView extends FrameLayout
 			// BitmapDrawable which ImageView keeps for reuse.
 			mImageView.setImageBitmap(null);
 			mImageView.setImageDrawable(null);
+			mLoadingSpinner.setVisibility(GONE);
 		}
 	}
 
