@@ -153,8 +153,10 @@ public final class CacheDownload extends PrioritisedCachedThreadPool.Task {
 			4 * 1024 * 1024, MAX_INLINE_PREVIEW_BYTES};
 
 	static void checkDownloadSize(final int fileType, final long bytes) throws IOException {
-		if(fileType == Constants.FileType.INLINE_IMAGE_PREVIEW && bytes > MAX_INLINE_PREVIEW_BYTES) {
-			throw new IOException("Inline image preview exceeds " + MAX_INLINE_PREVIEW_BYTES + " bytes");
+		if(fileType == Constants.FileType.INLINE_IMAGE_PREVIEW
+				&& bytes > MAX_INLINE_PREVIEW_BYTES) {
+			throw new IOException("Inline image preview exceeds "
+					+ MAX_INLINE_PREVIEW_BYTES + " bytes");
 		}
 	}
 

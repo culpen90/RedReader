@@ -121,7 +121,8 @@ public final class PrefsUtility {
 
 	public static PostLayout post_layout() {
 		try {
-			return PostLayout.fromPreference(getString(R.string.pref_layout_mode_key, "thumbnails"));
+			return PostLayout.fromPreference(
+					getString(R.string.pref_layout_mode_key, "thumbnails"));
 		} catch(final ClassCastException e) {
 			return PostLayout.THUMBNAILS;
 		}
